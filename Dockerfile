@@ -1,37 +1,28 @@
-
 FROM python:3.11-slim
 WORKDIR /app
 
-# Create a non-root user
 RUN adduser --disabled-password --gecos "" myuser
-
-# Switch to the non-root user
 USER myuser
 
-# Set up environment variables - Start
 ENV PATH="/home/myuser/.local/bin:$PATH"
-
 ENV GOOGLE_GENAI_USE_VERTEXAI=1
 ENV GOOGLE_CLOUD_PROJECT=qwiklabs-gcp-04-ec3596addc43
-ENV GOOGLE_CLOUD_LOCATION=us-central1
+ENV GOOGLE_CLOUD_LOCATION=global
+ENV COMPUTE_REGION=us-central1
+ENV BQ_LOCATION=US
+ENV CITY=Atlanta
+ENV TRACK=budget
+ENV SCENARIO_SITES=3
+ENV BQML_MODEL_ID=offset_model_v1
+ENV AGENT_MODEL=gemini-3-flash-preview
+ENV WRITER_MODEL=gemini-3-flash-preview
 
-# Set up environment variables - End
+COPY --chown=myuser:myuser "agent/requirements.txt" "/app/requirements.txt"
+RUN pip install --no-cache-dir -r "/app/requirements.txt"
 
-# Install ADK - Start
-RUN pip install google-adk==2.2.0
-# Install ADK - End
-
-# Copy agent - Start
-
-# Set permission
 COPY --chown=myuser:myuser "agent/" "/app/agents/urban_heat_agent/"
-
-# Copy agent - End
-
-# Install Agent Deps - Start
-RUN pip install -r "/app/agents/urban_heat_agent/requirements.txt"
-# Install Agent Deps - End
+ENV PYTHONPATH="/app/agents/urban_heat_agent:/app/agents"
 
 EXPOSE 8000
 
-CMD adk api_server --with_ui --port=8000 --host=0.0.0.0 --session_service_uri=memory:// --artifact_service_uri=memory:// "/app/agents"
+CMD ["python", "-m", "uvicorn", "heat_planner.api:app", "--host", "0.0.0.0", "--port", "8000"]
