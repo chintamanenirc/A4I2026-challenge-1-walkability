@@ -130,7 +130,7 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
     <div className="w-full flex flex-col gap-6">
       {/* Header Title & Subtitle */}
       <div>
-        <h2 className="text-2xl sm:text-[28px] font-extrabold text-slate-100 tracking-tight">
+        <h2 className="text-2xl sm:text-[28px] font-extrabold text-slate-50 tracking-tight">
           Did our sites land where heat hurts most?
         </h2>
         <p className="text-xs sm:text-sm text-slate-400 mt-1.5 max-w-3xl leading-relaxed">
@@ -140,9 +140,13 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
         </p>
       </div>
 
-      {/* Verdict Banner */}
-      <div className="bg-[#221715] border border-[#f97316]/45 rounded-2xl px-6 py-5 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div className="flex flex-wrap items-center gap-6">
+      {/* Verdict Banner (rounded-2xl parent with rounded-xl children) */}
+      <div className="bg-gradient-to-r from-[#241614]/95 via-[#1a141b]/95 to-[#121726]/95 backdrop-blur-xl border border-[#f97316]/40 rounded-2xl p-6 shadow-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-16 left-10 w-64 h-36 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.16),transparent_70%)] blur-2xl"
+        />
+        <div className="flex flex-wrap items-center gap-6 relative z-10">
           {/* Left: [n] of 4 measures */}
           <div className="flex items-baseline gap-2.5">
             <span className="text-4xl sm:text-5xl font-extrabold text-[#f97316] font-mono tracking-tight">
@@ -159,7 +163,7 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
               VERDICT · {fundedSites.length} FUNDED{" "}
               {fundedSites.length === 1 ? "SITE" : "SITES"}
             </div>
-            <div className="text-base sm:text-lg font-extrabold text-slate-100 mt-0.5">
+            <div className="text-base sm:text-lg font-extrabold text-slate-50 mt-0.5">
               {measuresMatched >= 3
                 ? "Our sites skew toward need."
                 : "Our sites partially skew toward need."}
@@ -168,26 +172,26 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
         </div>
 
         {/* Right: 4 Directional Metric Chips */}
-        <div className="flex flex-wrap items-center gap-2.5 text-xs font-mono">
-          <div className="bg-[#121620] border border-slate-800 px-3.5 py-2 rounded-lg text-slate-300">
+        <div className="flex flex-wrap items-center gap-2.5 text-xs font-mono relative z-10">
+          <div className="bg-white/[0.04] backdrop-blur-md border border-white/10 px-3.5 py-2 rounded-xl text-slate-200 shadow-inner">
             Income ·{" "}
             <span className="text-[#fdba74] font-bold">
               {incomeSkewNeed ? "↓" : "↑"}
             </span>
           </div>
-          <div className="bg-[#121620] border border-slate-800 px-3.5 py-2 rounded-lg text-slate-300">
+          <div className="bg-white/[0.04] backdrop-blur-md border border-white/10 px-3.5 py-2 rounded-xl text-slate-200 shadow-inner">
             Poverty ·{" "}
             <span className="text-[#fdba74] font-bold">
               {povertySkewNeed ? "↑" : "↓"}
             </span>
           </div>
-          <div className="bg-[#121620] border border-slate-800 px-3.5 py-2 rounded-lg text-slate-300">
+          <div className="bg-white/[0.04] backdrop-blur-md border border-white/10 px-3.5 py-2 rounded-xl text-slate-200 shadow-inner">
             No car ·{" "}
             <span className="text-[#fdba74] font-bold">
               {noCarSkewNeed ? "↑" : "↓"}
             </span>
           </div>
-          <div className="bg-[#121620] border border-slate-800 px-3.5 py-2 rounded-lg text-slate-300">
+          <div className="bg-white/[0.04] backdrop-blur-md border border-white/10 px-3.5 py-2 rounded-xl text-slate-200 shadow-inner">
             65+ ·{" "}
             <span className="text-[#fdba74] font-bold">
               {seniorsSkewNeed ? "↑" : "↓"}
@@ -199,11 +203,11 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
       {/* Main 2-Column Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left Column: Quadrant Scatter Plot */}
-        <div className="lg:col-span-5 bg-[#0d1422] border border-slate-800/90 rounded-2xl p-6 shadow-xl flex flex-col justify-between gap-5">
+        <div className="lg:col-span-5 bg-[#0d1322]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col justify-between gap-5">
           <div>
             <div className="flex items-start justify-between gap-4 mb-1">
               <div>
-                <h3 className="text-base font-extrabold text-slate-100">
+                <h3 className="text-base font-extrabold text-slate-50">
                   Where it’s hot vs. where heat hurts
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -215,11 +219,12 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
               </div>
               <button
                 type="button"
+                aria-pressed={highlightSites}
                 onClick={() => setHighlightSites(!highlightSites)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm shrink-0 ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 active:scale-[0.98] shadow-sm shrink-0 ${
                   highlightSites
-                    ? "bg-[#f97316] text-[#090d16]"
-                    : "bg-[#162032] border border-slate-700 text-slate-200 hover:bg-slate-800"
+                    ? "bg-gradient-to-b from-[#fb923c] to-[#f97316] text-[#090d16] ring-1 ring-inset ring-white/25"
+                    : "bg-white/[0.04] border border-white/10 text-slate-200 hover:bg-white/[0.08] hover:ring-1 hover:ring-white/15"
                 }`}
               >
                 Highlight our sites
@@ -233,7 +238,7 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                 Vulnerability (no car, 65+) →
               </div>
 
-              <div className="ml-5 h-[310px] bg-[#090e18] border border-slate-800/90 rounded-lg overflow-hidden relative">
+              <div className="ml-5 h-[310px] bg-[#080d17] border border-white/10 rounded-xl overflow-hidden relative shadow-inner">
                 <svg
                   viewBox="0 0 380 280"
                   className="w-full h-full"
@@ -412,11 +417,11 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
         </div>
 
         {/* Right Column: Recommended tracts vs. Atlanta */}
-        <div className="lg:col-span-7 bg-[#0d1422] border border-slate-800/90 rounded-2xl p-6 shadow-xl flex flex-col justify-between gap-6">
+        <div className="lg:col-span-7 bg-[#0d1322]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col justify-between gap-6">
           <div>
             {/* Card Header & Legend */}
             <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-              <h3 className="text-base font-extrabold text-slate-100">
+              <h3 className="text-base font-extrabold text-slate-50">
                 Recommended tracts vs. Atlanta
               </h3>
               <div className="flex items-center gap-5 text-xs">
@@ -432,7 +437,7 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
             </div>
 
             {/* 4 Horizontal Comparison Bars */}
-            <div className="flex flex-col divide-y divide-slate-800/70">
+            <div className="flex flex-col divide-y divide-white/10">
               {/* 1. Median household income */}
               <div className="py-4 first:pt-0 space-y-2.5">
                 <div className="flex items-center justify-between text-xs">
@@ -682,15 +687,16 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
           </div>
 
           {/* Bottom Card Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-white/10">
             <span className="text-xs text-slate-400">
               Wired to BigQuery semantic audit layer
               (a4i_semantic.audit_city_baseline).
             </span>
             <button
               type="button"
+              aria-expanded={showRacialAudit}
               onClick={() => setShowRacialAudit(!showRacialAudit)}
-              className="px-4 py-2.5 rounded-xl border border-slate-700 bg-[#111827] hover:bg-slate-800 text-slate-200 text-xs font-bold transition-colors"
+              className="px-4 py-2.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/20 hover:ring-1 hover:ring-white/15 active:scale-[0.98] text-slate-200 text-xs font-bold transition-all duration-200"
             >
               {showRacialAudit
                 ? "Hide racial composition"
@@ -705,14 +711,14 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
         <button
           type="button"
           onClick={() => onNavigateTab("proposal")}
-          className="px-5 py-3 rounded-xl bg-[#f97316] hover:bg-orange-400 text-[#090d16] font-bold text-xs tracking-wide transition-all shadow-md active:scale-[0.99]"
+          className="px-5 py-3 rounded-xl bg-gradient-to-b from-[#fb923c] to-[#f97316] hover:from-orange-400 hover:to-orange-500 text-[#090d16] font-extrabold text-xs tracking-wide transition-all duration-200 shadow-md shadow-orange-950/50 ring-1 ring-inset ring-white/25 active:scale-[0.98]"
         >
           Add audit to council proposal →
         </button>
         <button
           type="button"
           onClick={() => onNavigateTab("sites")}
-          className="px-5 py-3 rounded-xl bg-[#0d1422] hover:bg-slate-800 border border-slate-700 text-slate-200 font-bold text-xs transition-colors shadow-sm"
+          className="px-5 py-3 rounded-xl bg-[#0d1322]/90 backdrop-blur-md hover:bg-white/[0.06] border border-white/10 hover:border-white/20 hover:ring-1 hover:ring-white/15 active:scale-[0.98] text-slate-200 font-bold text-xs transition-all duration-200 shadow-sm"
         >
           Back to sites
         </button>

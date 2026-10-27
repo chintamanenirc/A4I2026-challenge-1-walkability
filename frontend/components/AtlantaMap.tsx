@@ -66,7 +66,7 @@ const TRACT_POLYGONS: TractPoly[] = [
   // Row 3 (Upper-Mid Core — includes Site 1)
   { id: "r3c1", tractCode: "84.00", areaLabel: "Grove Park West", points: "0,145 122,135 112,210 0,205", heatLevel: 0, noCarLevel: 1, age65Level: 2, estOffsetF: 0.4, estNoCarPct: 11.2, estAge65Pct: 15.2 },
   { id: "r3c2", tractCode: "85.00", areaLabel: "Center Hill", points: "122,135 212,128 198,195 112,210", heatLevel: 3, noCarLevel: 3, age65Level: 3, estOffsetF: 2.8, estNoCarPct: 22.1, estAge65Pct: 16.9 },
-  { id: "r3c3", tractCode: "68.02", areaLabel: "Thomasville (Site 1)", points: "212,128 282,122 275,192 198,195", heatLevel: 4, noCarLevel: 4, age65Level: 4, estOffsetF: 4.1, estNoCarPct: 24.6, estAge65Pct: 17.8, siteId: 1 },
+  { id: "r3c3", tractCode: "44.00", areaLabel: "Atlanta University Center / Ashview Heights (Site 1)", points: "212,128 282,122 275,192 198,195", heatLevel: 4, noCarLevel: 4, age65Level: 4, estOffsetF: 4.3, estNoCarPct: 37.8, estAge65Pct: 11.3, siteId: 1 },
   { id: "r3c4", tractCode: "10.01", areaLabel: "Home Park / Tech", points: "282,122 365,118 355,188 275,192", heatLevel: 2, noCarLevel: 3, age65Level: 2, estOffsetF: 2.1, estNoCarPct: 20.4, estAge65Pct: 13.8 },
   { id: "r3c5", tractCode: "12.01", areaLabel: "Midtown Core", points: "365,118 452,115 445,182 355,188", heatLevel: 1, noCarLevel: 2, age65Level: 2, estOffsetF: 1.4, estNoCarPct: 14.8, estAge65Pct: 13.1 },
   { id: "r3c6", tractCode: "15.00", areaLabel: "Virginia-Highland", points: "452,115 558,125 545,185 445,182", heatLevel: 1, noCarLevel: 1, age65Level: 1, estOffsetF: 0.8, estNoCarPct: 7.9, estAge65Pct: 11.4 },
@@ -78,15 +78,15 @@ const TRACT_POLYGONS: TractPoly[] = [
   { id: "r4c2", tractCode: "25.00", areaLabel: "English Avenue", points: "112,210 198,195 188,268 105,275", heatLevel: 2, noCarLevel: 3, age65Level: 3, estOffsetF: 2.3, estNoCarPct: 26.4, estAge65Pct: 15.8 },
   { id: "r4c3", tractCode: "26.00", areaLabel: "Vine City", points: "198,195 275,192 268,262 188,268", heatLevel: 3, noCarLevel: 4, age65Level: 3, estOffsetF: 2.9, estNoCarPct: 31.2, estAge65Pct: 16.4 },
   { id: "r4c4", tractCode: "35.00", areaLabel: "Downtown / Five Points", points: "275,192 355,188 350,258 268,262", heatLevel: 3, noCarLevel: 3, age65Level: 2, estOffsetF: 3.1, estNoCarPct: 24.0, estAge65Pct: 12.9 },
-  { id: "r4c5", tractCode: "44.00", areaLabel: "Sweet Auburn", points: "355,188 445,182 435,255 350,258", heatLevel: 4, noCarLevel: 4, age65Level: 3, estOffsetF: 3.4, estNoCarPct: 29.5, estAge65Pct: 15.7 },
-  { id: "r4c6", tractCode: "62.00", areaLabel: "Peoplestown (Site 2)", points: "445,182 545,185 532,262 435,255", heatLevel: 4, noCarLevel: 3, age65Level: 3, estOffsetF: 3.7, estNoCarPct: 21.4, estAge65Pct: 16.2, siteId: 2 },
+  { id: "r4c5", tractCode: "48.00", areaLabel: "Sweet Auburn", points: "355,188 445,182 435,255 350,258", heatLevel: 4, noCarLevel: 4, age65Level: 3, estOffsetF: 3.4, estNoCarPct: 29.5, estAge65Pct: 15.7 },
+  { id: "r4c6", tractCode: "42.00", areaLabel: "West End / Lee Street SW Corridor (Site 2)", points: "445,182 545,185 532,262 435,255", heatLevel: 4, noCarLevel: 3, age65Level: 3, estOffsetF: 3.7, estNoCarPct: 26.7, estAge65Pct: 14.3, siteId: 2 },
   { id: "r4c7", tractCode: "50.00", areaLabel: "Reynoldstown", points: "545,185 642,175 628,255 532,262", heatLevel: 4, noCarLevel: 1, age65Level: 1, estOffsetF: 3.1, estNoCarPct: 9.8, estAge65Pct: 10.6 },
-  { id: "r4c8", tractCode: "24.00", areaLabel: "Bankhead (Site 4)", points: "642,175 760,190 760,260 628,255", heatLevel: 3, noCarLevel: 1, age65Level: 1, estOffsetF: 3.0, estNoCarPct: 16.2, estAge65Pct: 11.8, siteId: 4 },
+  { id: "r4c8", tractCode: "58.00", areaLabel: "Mechanicsville / McDaniel Street Corridor (Site 4)", points: "642,175 760,190 760,260 628,255", heatLevel: 3, noCarLevel: 1, age65Level: 1, estOffsetF: 3.8, estNoCarPct: 20.8, estAge65Pct: 6.4, siteId: 4 },
 
   // Row 5 (South-Central Core)
   { id: "r5c1", tractCode: "81.02", areaLabel: "Adamsville", points: "0,270 105,275 95,345 0,340", heatLevel: 1, noCarLevel: 2, age65Level: 2, estOffsetF: 1.1, estNoCarPct: 15.6, estAge65Pct: 14.9 },
   { id: "r5c2", tractCode: "40.00", areaLabel: "Westview", points: "105,275 188,268 178,340 95,345", heatLevel: 2, noCarLevel: 3, age65Level: 3, estOffsetF: 1.9, estNoCarPct: 21.0, estAge65Pct: 16.1 },
-  { id: "r5c3", tractCode: "42.00", areaLabel: "West End", points: "188,268 268,262 258,335 178,340", heatLevel: 2, noCarLevel: 3, age65Level: 3, estOffsetF: 2.2, estNoCarPct: 23.4, estAge65Pct: 15.5 },
+  { id: "r5c3", tractCode: "43.00", areaLabel: "Oakland City", points: "188,268 268,262 258,335 178,340", heatLevel: 2, noCarLevel: 3, age65Level: 3, estOffsetF: 2.2, estNoCarPct: 23.4, estAge65Pct: 15.5 },
   { id: "r5c4", tractCode: "57.00", areaLabel: "Pittsburgh", points: "268,262 350,258 342,330 258,335", heatLevel: 3, noCarLevel: 4, age65Level: 3, estOffsetF: 3.0, estNoCarPct: 25.7, estAge65Pct: 15.2 },
   { id: "r5c5", tractCode: "55.01", areaLabel: "Summerhill", points: "350,258 435,255 425,332 342,330", heatLevel: 4, noCarLevel: 3, age65Level: 3, estOffsetF: 3.3, estNoCarPct: 22.8, estAge65Pct: 14.9 },
   { id: "r5c6", tractCode: "53.00", areaLabel: "Grant Park", points: "435,255 532,262 518,338 425,332", heatLevel: 3, noCarLevel: 2, age65Level: 2, estOffsetF: 2.4, estNoCarPct: 12.1, estAge65Pct: 12.4 },
@@ -95,9 +95,9 @@ const TRACT_POLYGONS: TractPoly[] = [
 
   // Row 6 (South Atlanta — includes Site 3 and Site 5)
   { id: "r6c1", tractCode: "78.07", areaLabel: "Cascade Heights", points: "0,340 95,345 88,415 0,412", heatLevel: 1, noCarLevel: 2, age65Level: 2, estOffsetF: 0.9, estNoCarPct: 14.2, estAge65Pct: 16.0 },
-  { id: "r6c2", tractCode: "65.00", areaLabel: "Lakewood Heights (Site 5)", points: "95,345 178,340 168,415 88,415", heatLevel: 2, noCarLevel: 2, age65Level: 2, estOffsetF: 2.8, estNoCarPct: 17.5, estAge65Pct: 12.1, siteId: 5 },
+  { id: "r6c2", tractCode: "65.00", areaLabel: "Lakewood Heights / Jonesboro Road Corridor (Site 5)", points: "95,345 178,340 168,415 88,415", heatLevel: 2, noCarLevel: 2, age65Level: 2, estOffsetF: 3.3, estNoCarPct: 16.2, estAge65Pct: 15.8, siteId: 5 },
   { id: "r6c3", tractCode: "61.00", areaLabel: "Sylvan Hills", points: "178,340 258,335 248,412 168,415", heatLevel: 3, noCarLevel: 3, age65Level: 3, estOffsetF: 2.7, estNoCarPct: 20.8, estAge65Pct: 15.9 },
-  { id: "r6c4", tractCode: "58.00", areaLabel: "Mechanicsville (Site 3)", points: "258,335 342,330 335,410 248,412", heatLevel: 4, noCarLevel: 4, age65Level: 3, estOffsetF: 3.2, estNoCarPct: 28.9, estAge65Pct: 14.5, siteId: 3 },
+  { id: "r6c4", tractCode: "76.03", areaLabel: "Oakland City / Lakewood SW Corridor (Site 3)", points: "258,335 342,330 335,410 248,412", heatLevel: 4, noCarLevel: 4, age65Level: 3, estOffsetF: 3.1, estNoCarPct: 33.4, estAge65Pct: 20.5, siteId: 3 },
   { id: "r6c5", tractCode: "63.00", areaLabel: "South Atlanta", points: "342,330 425,332 415,412 335,410", heatLevel: 4, noCarLevel: 4, age65Level: 4, estOffsetF: 3.3, estNoCarPct: 27.4, estAge65Pct: 17.2 },
   { id: "r6c6", tractCode: "67.00", areaLabel: "Chosewood Park", points: "425,332 518,338 505,415 415,412", heatLevel: 3, noCarLevel: 2, age65Level: 2, estOffsetF: 2.5, estNoCarPct: 14.6, estAge65Pct: 13.0 },
   { id: "r6c7", tractCode: "70.01", areaLabel: "Boulevard Heights", points: "518,338 615,335 602,415 505,415", heatLevel: 1, noCarLevel: 1, age65Level: 1, estOffsetF: 1.0, estNoCarPct: 9.5, estAge65Pct: 11.8 },
@@ -139,6 +139,20 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
   const activeSite = sites.find((s) => s.id === selectedSiteId) || sites[0];
   const activeLon = activeSite.lon ?? activeSite.lng;
 
+  const polygons = TRACT_POLYGONS.map((poly) => {
+    if (!poly.siteId) return poly;
+    const site = sites.find((s) => s.id === poly.siteId);
+    if (!site) return poly;
+    return {
+      ...poly,
+      tractCode: site.shortTract,
+      areaLabel: `${site.name} (Site ${site.id})`,
+      estOffsetF: site.offsetF,
+      estNoCarPct: site.noCarPct,
+      estAge65Pct: site.seniorsPct,
+    };
+  });
+
   const getPolygonFill = (poly: TractPoly) => {
     const level =
       activeLayer === "heat"
@@ -153,7 +167,7 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
     heat: {
       title: "Atlanta · predicted heat offset by census tract",
       low: "Cooler (−1.8°F)",
-      high: "Hotter (+4.1°F vs. city average)",
+      high: "Hotter (+4.3°F vs. city average)",
     },
     nocar: {
       title: "Atlanta · share of households without a vehicle",
@@ -279,7 +293,7 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
             >
               {/* Census Tract Polygons */}
               <g>
-                {TRACT_POLYGONS.map((poly) => {
+                {polygons.map((poly) => {
                   const isHovered = hoveredTract?.id === poly.id;
                   const isSelectedPoly = poly.siteId === selectedSiteId;
                   return (

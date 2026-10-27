@@ -16,6 +16,7 @@ interface NavbarProps {
   activeTab: "ask" | "sites" | "equity" | "proposal";
   setActiveTab: (tab: "ask" | "sites" | "equity" | "proposal") => void;
   centersToFund?: number;
+  setCentersToFund?: (fn: (prev: number) => number) => void;
   totalReached?: number;
   totalBudgetStr?: string;
   onOpenCompareModal?: () => void;
@@ -25,15 +26,16 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   centersToFund = 3,
+  setCentersToFund,
   totalReached = 12260,
   totalBudgetStr = "$540k",
   onOpenCompareModal,
 }) => {
   const tabs = [
-    { id: "ask" as const, step: "1", label: "Ask", icon: MessageSquare },
-    { id: "sites" as const, step: "2", label: "Sites", icon: BarChart3 },
-    { id: "equity" as const, step: "3", label: "Equity audit", icon: Scale },
-    { id: "proposal" as const, step: "4", label: "Proposal", icon: FileText },
+    { id: "ask" as const, step: "1", label: "Ask & Map", icon: MessageSquare },
+    { id: "sites" as const, step: "2", label: "Site Drivers", icon: BarChart3 },
+    { id: "equity" as const, step: "3", label: "Equity Audit", icon: Scale },
+    { id: "proposal" as const, step: "4", label: "Council Memo", icon: FileText },
   ];
 
   const isAsk = activeTab === "ask";
@@ -91,12 +93,21 @@ export const Navbar: React.FC<NavbarProps> = ({
                 type="button"
                 aria-current={active ? "page" : undefined}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-xl text-xs transition-all duration-200 flex items-center gap-2 whitespace-nowrap active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f97316]/60 ${
+                className={`px-3.5 py-2 rounded-xl text-xs transition-all duration-200 flex items-center gap-2 whitespace-nowrap active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f97316]/60 ${
                   active
                     ? "bg-gradient-to-b from-[#fb923c] to-[#f97316] text-[#090d16] font-extrabold shadow-md shadow-orange-950/40 ring-1 ring-inset ring-white/25"
                     : "text-slate-300 hover:text-white hover:bg-white/[0.06] hover:ring-1 hover:ring-white/15 font-medium"
                 }`}
               >
+                <span
+                  className={`w-4 h-4 rounded-full text-[10px] font-mono font-bold flex items-center justify-center shrink-0 ${
+                    active
+                      ? "bg-[#090d16]/20 text-[#090d16]"
+                      : "bg-white/10 text-slate-300"
+                  }`}
+                >
+                  {tab.step}
+                </span>
                 <Icon className="w-3.5 h-3.5 shrink-0" />
                 <span>{tab.label}</span>
               </button>
@@ -157,38 +168,59 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       </div>
 
-      {/* Subheader Scenario Bar (shown on Ask tab per Screenshot 1) */}
-      {isAsk && (
-        <div className="border-t border-white/[0.08] bg-[#0a0f1c]/90 backdrop-blur-md">
-          <div className="max-w-[1440px] mx-auto w-full px-6 sm:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="px-2 py-0.5 rounded-md bg-orange-500/15 border border-orange-500/35 text-[#fdba74] font-mono text-[10px] font-bold uppercase tracking-wider">
-                Scenario
-              </span>
-              <span className="text-slate-100 font-semibold">
-                Fund {centersToFund} permanent cooling{" "}
-                {centersToFund === 1 ? "center" : "centers"} ($600k cap)
-              </span>
-              <span className="text-slate-400">
-                · Council vote in 3 weeks · City of Atlanta
-              </span>
-            </div>
+      {/* Subheader Scenario Bar (shown across all tabs for quick scenario control) */}
+      <div className="border-t border-white/[0.08] bg-[#0a0f1c]/90 backdrop-blur-md">
+        <div className="max-w-[1440px] mx-auto w-full px-6 sm:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="px-2 py-0.5 rounded-md bg-orange-500/15 border border-orange-500/35 text-[#fdba74] font-mono text-[10px] font-bold uppercase tracking-wider">
+              Scenario
+            </span>
+            <span className="text-slate-100 font-semibold">
+              Fund {centersToFund} permanent cooling{" "}
+              {centersToFund === 1 ? "center" : "centers"} ({totalBudgetStr} of $600k cap)
+            </span>
+            {setCentersToFund && (
+              <div
+                className="inline-flex items-center gap-1 bg-white/[0.04] border border-white/10 rounded-lg p-0.5 ml-1"
+                role="group"
+                aria-label="Adjust number of cooling centers to fund"
+              >
+                {[1, 2, 3, 4, 5].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setCentersToFund(() => num)}
+                    className={`w-6 h-5 rounded text-[11px] font-mono font-bold transition-all duration-150 ${
+                      centersToFund === num
+                        ? "bg-[#f97316] text-[#090d16] shadow-sm"
+                        : "text-slate-400 hover:text-white hover:bg-white/10"
+                    }`}
+                    title={`Fund ${num} cooling ${num === 1 ? "center" : "centers"}`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+            )}
+            <span className="text-slate-400 hidden sm:inline">
+              · {totalReached.toLocaleString()} vulnerable residents reached · Council vote in 3 weeks
+            </span>
+          </div>
 
-            <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-slate-300">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-slate-300 transition-all duration-200 hover:border-white/20">
-                <Database className="w-3 h-3 text-[#f97316]" />
-                Heat Watch · 23.4k pts
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-slate-300 transition-all duration-200 hover:border-white/20">
-                GHCN · 7 yrs
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-slate-300 transition-all duration-200 hover:border-white/20">
-                ACS · 353 tracts
-              </span>
-            </div>
+          <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-slate-300">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-slate-300 transition-all duration-200 hover:border-white/20">
+              <Database className="w-3 h-3 text-[#f97316]" />
+              Heat Watch · 23.4k pts
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-slate-300 transition-all duration-200 hover:border-white/20">
+              GHCN · 7 yrs
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-slate-300 transition-all duration-200 hover:border-white/20">
+              ACS · 353 tracts
+            </span>
           </div>
         </div>
-      )}
+      </div>
     </header>
   );
 };

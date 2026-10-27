@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const LOCAL_ADK_URL = process.env.LOCAL_ADK_URL || "http://127.0.0.1:8000";
 const URBAN_HEAT_AGENT_URL = process.env.CLOUD_RUN_URL || "https://urban-heat-agent-1042443035046.us-central1.run.app";
 const ATLANTA_HEAT_AGENT_URL = process.env.ATLANTA_AGENT_URL || "https://atlanta-heat-agent-1042443035046.us-central1.run.app";
 
 export interface DriverAttribution {
   feature: string;
+  label?: string;
   attributionF: number;
   interpretation?: string;
 }
@@ -12,17 +14,24 @@ export interface DriverAttribution {
 export interface TractDemographics {
   povertyRatePct?: number;
   noVehicleRatePct?: number;
+  seniorsPct?: number;
+  carFreeHouseholds?: number;
   medianIncome?: number;
   totalPop?: number;
+  walkShedPop?: number;
+  hotDaysPerYr?: number;
   medianAge?: number;
 }
 
 export interface StructuredSite {
   rank?: number;
   censusTractId?: string;
+  neighborhood?: string;
+  facilitySite?: string;
   lat: number;
   lon: number;
   predictedOffsetF?: number;
+  mlPredOffsetF?: number;
   score?: number;
   drivers?: DriverAttribution[];
   demographics?: TractDemographics;
@@ -37,9 +46,54 @@ export interface StructuredData {
   heatFrequency?: any;
 }
 
-function parseStructuredAgentEvents(events: any[]): { fullResponse: string; structuredData: StructuredData } {
-  let fullResponse = "";
+function parseKeyHeatDrivers(rawDrivers: any): DriverAttribution[] {
+  if (!Array.isArray(rawDrivers)) return [];
+  const drivers: DriverAttribution[] = [];
+  for (const item of rawDrivers) {
+    if (typeof item === "string") {
+      const m = item.match(/^(.+?)\s*\(([+-]?\d+(?:\.\d+)?)°F\)/);
+      if (m) {
+        drivers.push({
+          feature: m[1].trim(),
+          label: m[1].trim(),
+          attributionF: parseFloat(m[2]),
+          interpretation: item,
+        });
+      } else {
+        drivers.push({
+          feature: item,
+          label: item,
+          attributionF: 0,
+          interpretation: item,
+        });
+      }
+    } else if (item && typeof item === "object") {
+      drivers.push({
+        feature: item.feature || item.label || "Driver",
+        label: item.label || item.feature || "Driver",
+        attributionF:
+          typeof item.attributionF === "number"
+            ? item.attributionF
+            : typeof item.attribution_f === "number"
+            ? item.attribution_f
+            : typeof item.attribution === "number"
+            ? item.attribution
+            : 0,
+        interpretation: item.interpretation,
+      });
+    }
+  }
+  return drivers;
+}
+
+function parseStructuredAgentEvents(events: any[]): {
+  fullResponse: string;
+  structuredData: StructuredData;
+  toolsCalled: string[];
+} {
+  const textBlocks: string[] = [];
   const sites: StructuredSite[] = [];
+  const toolsCalled: string[] = [];
   let equityAudit: any = null;
   let heatFrequency: any = null;
 
@@ -47,29 +101,39 @@ function parseStructuredAgentEvents(events: any[]): { fullResponse: string; stru
     if (!ev?.content?.parts) continue;
 
     for (const p of ev.content.parts) {
-      if (p.text) {
-        fullResponse += p.text;
+      if (p.text && !p.thought && typeof p.text === "string" && p.text.trim()) {
+        const trimmed = p.text.trim();
+        if (!textBlocks.includes(trimmed)) {
+          textBlocks.push(trimmed);
+        }
+      }
+
+      if (p.functionCall?.name && !toolsCalled.includes(p.functionCall.name)) {
+        toolsCalled.push(p.functionCall.name);
       }
 
       if (p.functionResponse) {
         const toolName = p.functionResponse.name;
+        if (toolName && !toolsCalled.includes(toolName)) {
+          toolsCalled.push(toolName);
+        }
         const res = p.functionResponse.response;
         if (!res) continue;
 
-        // 1. explain_tract_heat_factors (single tract breakdown)
-        if (toolName === "explain_tract_heat_factors") {
-          const raw = res.error ? null : res;
-          if (raw) {
-            const drivers: DriverAttribution[] = (raw.feature_attributions || []).map((fa: any) => ({
-              feature: fa.feature || "",
-              attributionF: typeof fa.attribution_f === "number" ? fa.attribution_f : 0,
-            }));
+        // 1. explain_tract_heat_factors or predict_heat_offset (single location/tract breakdown)
+        if (toolName === "explain_tract_heat_factors" || toolName === "predict_heat_offset") {
+          const raw = res.error ? null : res.result || res;
+          if (raw && !raw.error) {
+            const drivers: DriverAttribution[] = parseKeyHeatDrivers(raw.drivers || raw.feature_attributions);
+            const offsetVal = raw.predicted_offset_f ?? raw.predicted_temp_offset_f;
 
             sites.push({
-              censusTractId: raw.census_tract_id,
-              lat: 33.7285, // Default fallback centroid if not in response
-              lon: -84.4217,
-              predictedOffsetF: raw.predicted_offset_f,
+              censusTractId: raw.census_tract_id || raw.census_tract || raw.neighborhood || "Point Query",
+              neighborhood: raw.neighborhood,
+              lat: typeof raw.latitude === "number" ? raw.latitude : 33.7285,
+              lon: typeof raw.longitude === "number" ? raw.longitude : -84.4217,
+              predictedOffsetF: offsetVal,
+              mlPredOffsetF: raw.ml_predicted_offset_f,
               drivers,
               demographics: {
                 povertyRatePct: raw.poverty_rate_pct,
@@ -77,7 +141,11 @@ function parseStructuredAgentEvents(events: any[]): { fullResponse: string; stru
                 medianAge: raw.median_age,
                 totalPop: raw.total_population,
               },
-              why: `Tract ${raw.census_tract_id} running ${raw.predicted_offset_f > 0 ? "+" : ""}${raw.predicted_offset_f}°F vs city mean`,
+              why:
+                raw.interpretation ||
+                `Location running ${offsetVal > 0 ? "+" : ""}${offsetVal}°F vs city baseline`,
+              googleMapsLink: raw.google_maps_url || raw.google_maps_link,
+              walkingDirectionsLink: raw.walking_route_url || raw.walking_directions_link,
             });
           }
         }
@@ -87,13 +155,18 @@ function parseStructuredAgentEvents(events: any[]): { fullResponse: string; stru
           toolName === "explain_atlanta_heat_model_tracts" ||
           toolName === "rank_atlanta_heat_model_tracts"
         ) {
-          const list = Array.isArray(res) ? res : [res];
+          const list = Array.isArray(res)
+            ? res
+            : Array.isArray(res?.result)
+            ? res.result
+            : [res];
           list.forEach((item: any, idx: number) => {
-            if (item.error) return;
+            if (!item || item.error) return;
             const drivers: DriverAttribution[] = [];
             if (item.primary_attribution) {
               drivers.push({
                 feature: item.primary_attribution.feature || "Primary Driver",
+                label: item.primary_attribution.feature || "Primary Driver",
                 attributionF: typeof item.primary_attribution.attribution === "number" ? item.primary_attribution.attribution : 0,
                 interpretation: item.primary_attribution.interpretation,
               });
@@ -103,6 +176,7 @@ function parseStructuredAgentEvents(events: any[]): { fullResponse: string; stru
                 if (!drivers.some((d) => d.feature === fa.feature)) {
                   drivers.push({
                     feature: fa.feature,
+                    label: fa.label || fa.feature,
                     attributionF: fa.attribution_f || fa.attribution || 0,
                   });
                 }
@@ -119,6 +193,7 @@ function parseStructuredAgentEvents(events: any[]): { fullResponse: string; stru
               demographics: {
                 povertyRatePct: item.poverty_rate_pct,
                 noVehicleRatePct: item.no_vehicle_rate_pct,
+                medianIncome: item.median_income,
                 medianAge: item.median_age,
                 totalPop: item.total_population,
               },
@@ -129,22 +204,54 @@ function parseStructuredAgentEvents(events: any[]): { fullResponse: string; stru
           });
         }
 
-        // 3. rank_candidate_sites
-        else if (toolName === "rank_candidate_sites") {
-          const list = Array.isArray(res) ? res : [res];
-          list.forEach((item: any, idx: number) => {
-            if (item.error) return;
+        // 3. select_cooling_center_sites or rank_candidate_sites (repo agent siting tools)
+        else if (toolName === "select_cooling_center_sites" || toolName === "rank_candidate_sites") {
+          const rawObj = res?.result || res;
+          const combinedList: any[] = [];
+          if (Array.isArray(rawObj)) {
+            combinedList.push(...rawObj);
+          } else if (Array.isArray(rawObj?.selected_sites)) {
+            combinedList.push(...rawObj.selected_sites);
+            if (Array.isArray(rawObj?.passed_over)) {
+              combinedList.push(...rawObj.passed_over);
+            }
+          } else if (Array.isArray(rawObj?.result)) {
+            combinedList.push(...rawObj.result);
+          } else if (rawObj && typeof rawObj === "object") {
+            combinedList.push(rawObj);
+          }
+
+          combinedList.forEach((item: any, idx: number) => {
+            if (!item || item.error) return;
+            const drivers = parseKeyHeatDrivers(item.drivers || item.key_heat_drivers || item.feature_attributions);
             sites.push({
-              rank: item.rank || idx + 1,
-              censusTractId: item.census_tract_id,
+              rank: item.site_number || item.rank || idx + 1,
+              censusTractId: item.census_tract_id || item.census_tract,
+              neighborhood: item.neighborhood,
+              facilitySite: item.facility_site,
               lat: item.coordinates?.latitude || 33.749,
               lon: item.coordinates?.longitude || -84.388,
-              predictedOffsetF: item.heat_offset_f,
-              score: item.composite_score,
+              predictedOffsetF: item.heat_offset_f ?? item.predicted_temp_offset_f,
+              mlPredOffsetF: item.ml_predicted_offset_f,
+              score: item.composite_score ?? item.composite_vulnerability_score,
+              drivers,
               demographics: {
                 povertyRatePct: item.poverty_rate_pct,
+                noVehicleRatePct: item.no_vehicle_rate_pct,
+                seniorsPct: item.seniors_65_plus_pct,
+                carFreeHouseholds: item.car_free_households,
+                medianIncome: item.median_income,
+                totalPop: item.population,
+                walkShedPop: item.walk_shed_population_1200m,
+                hotDaysPerYr: item.hot_days_ge_95_per_yr,
+                medianAge: item.median_age,
               },
-              why: item.rationale || `Selected for priority cooling center siting (Composite Score: ${item.composite_score})`,
+              why:
+                item.why_passed_over ||
+                item.rationale ||
+                `Selected for priority cooling center siting (Composite Score: ${
+                  item.composite_score ?? item.composite_vulnerability_score
+                })`,
               googleMapsLink: item.google_maps_link,
               walkingDirectionsLink: item.walking_directions_link,
             });
@@ -153,16 +260,18 @@ function parseStructuredAgentEvents(events: any[]): { fullResponse: string; stru
 
         // 4. audit_equity
         else if (toolName === "audit_equity") {
-          equityAudit = res;
+          equityAudit = res?.result || res;
         }
 
-        // 5. get_heat_frequency
-        else if (toolName === "get_heat_frequency") {
-          heatFrequency = res;
+        // 5. analyze_heat_frequency or get_heat_frequency
+        else if (toolName === "analyze_heat_frequency" || toolName === "get_heat_frequency") {
+          heatFrequency = res?.result || res;
         }
       }
     }
   }
+
+  const fullResponse = textBlocks.join("\n\n");
 
   return {
     fullResponse,
@@ -171,6 +280,7 @@ function parseStructuredAgentEvents(events: any[]): { fullResponse: string; stru
       equityAudit,
       heatFrequency,
     },
+    toolsCalled,
   };
 }
 
@@ -188,48 +298,85 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing prompt" }, { status: 400 });
     }
 
-    const queryAgent = async (targetUrl: string, appName: string) => {
-      const startTime = Date.now();
+    const executeAgainstAdk = async (baseUrl: string, appName: string) => {
       try {
-        await fetch(`${targetUrl}/apps/${appName}/users/${userId}/sessions/${sessionId}`, {
+        await fetch(`${baseUrl}/apps/${appName}/users/${userId}/sessions/${sessionId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
         });
       } catch {
-        // Session endpoint optional/idempotent
+        // Session creation optional/idempotent
       }
 
-      const agentRes = await fetch(`${targetUrl}/run`, {
+      return fetch(`${baseUrl}/run`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          appName: appName,
-          userId: userId,
-          sessionId: sessionId,
+          appName,
+          userId,
+          sessionId,
           newMessage: {
             role: "user",
             parts: [{ text: prompt }],
           },
         }),
       });
+    };
+
+    const queryAgent = async (remoteCloudUrl: string, appName: string) => {
+      const startTime = Date.now();
+      let agentRes: Response | null = null;
+      const preferLocal = process.env.PREFER_LOCAL_ADK === "true";
+      const primaryUrl = preferLocal ? LOCAL_ADK_URL : remoteCloudUrl;
+      const secondaryUrl = preferLocal ? remoteCloudUrl : LOCAL_ADK_URL;
+      let usedUrl = primaryUrl;
+
+      // Default to calling the Cloud Run agent first; fall back to local ADK only if unreachable
+      try {
+        agentRes = await executeAgainstAdk(primaryUrl, appName);
+        if (!agentRes.ok && secondaryUrl !== primaryUrl) {
+          agentRes = await executeAgainstAdk(secondaryUrl, appName);
+          usedUrl = secondaryUrl;
+        }
+      } catch {
+        try {
+          agentRes = await executeAgainstAdk(secondaryUrl, appName);
+          usedUrl = secondaryUrl;
+        } catch {
+          agentRes = null;
+        }
+      }
 
       const latencyMs = Date.now() - startTime;
-      if (!agentRes.ok) {
-        const errText = await agentRes.text();
+      if (!agentRes || !agentRes.ok) {
+        const errText = agentRes ? await agentRes.text() : "Unreachable";
         return {
-          error: `Agent error (${agentRes.status}): ${errText}`,
+          error: `Agent error (${agentRes?.status || 500} from ${usedUrl}): ${errText}`,
           latencyMs,
           response: "",
           coordinates: [],
           structuredData: { sites: [] },
+          toolsCalled: [],
+          sourceUrl: usedUrl,
         };
       }
 
       const events = await agentRes.json();
-      const { fullResponse, structuredData } = parseStructuredAgentEvents(events);
+      let { fullResponse, structuredData, toolsCalled } = parseStructuredAgentEvents(events);
 
-      // Extract coordinates from structured data first
+      if (!fullResponse.trim() && structuredData.sites.length > 0) {
+        const rows = structuredData.sites
+          .map(
+            (s, i) =>
+              `| ${s.rank || i + 1} | ${s.censusTractId || "N/A"} | +${(s.predictedOffsetF ?? 0).toFixed(2)}°F | ${
+                s.why || "High urban heat anomaly"
+              } | ${s.demographics?.povertyRatePct ?? "N/A"}% | ${s.demographics?.noVehicleRatePct ?? "N/A"}% |`
+          )
+          .join("\n");
+        fullResponse = `### BigQuery ML & ACS Siting Analysis\n\n| Rank | Census Tract | Heat Offset | Primary Driver | Poverty | No Vehicle |\n|---|---|---|---|---|---|\n${rows}`;
+      }
+
       const coordMatches: {
         lat: number;
         lon: number;
@@ -255,7 +402,6 @@ export async function POST(req: NextRequest) {
           });
         });
       } else {
-        // Fallback: extract coordinates from text via regex if tools did not return structured site points
         const coordRegex = /(?:Latitude|lat|latitude)[\s:]*([+-]?\d+\.\d+)[,\s]+(?:Longitude|lon|longitude)[\s:]*([+-]?\d+\.\d+)/gi;
         let match;
         while ((match = coordRegex.exec(fullResponse)) !== null) {
@@ -278,7 +424,9 @@ export async function POST(req: NextRequest) {
         response: fullResponse,
         coordinates: coordMatches,
         structuredData,
+        toolsCalled,
         latencyMs,
+        sourceUrl: usedUrl,
       };
     };
 
@@ -306,14 +454,16 @@ export async function POST(req: NextRequest) {
 
     const isAtlantaAgent = agentId === "atlanta_heat_agent";
     const targetUrl = isAtlantaAgent ? ATLANTA_HEAT_AGENT_URL : URBAN_HEAT_AGENT_URL;
-    const appName = isAtlantaAgent ? "atlanta_heat_agent" : "urban_heat_agent";
+    const appName = isAtlantaAgent ? "atlanta_heat_agent" : agentId === "agent" ? "agent" : "urban_heat_agent";
 
     const singleResult = await queryAgent(targetUrl, appName);
     return NextResponse.json({
       response: singleResult.response,
       coordinates: singleResult.coordinates,
       structuredData: singleResult.structuredData,
+      toolsCalled: singleResult.toolsCalled,
       latencyMs: singleResult.latencyMs,
+      sourceUrl: singleResult.sourceUrl,
       agentId,
       sessionId,
     });

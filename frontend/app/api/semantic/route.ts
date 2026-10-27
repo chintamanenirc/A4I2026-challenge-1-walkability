@@ -63,8 +63,20 @@ export async function GET(req: NextRequest) {
 
     if (type === "baseline") {
       const query = `
-        SELECT *
-        FROM \`${PROJECT_ID}.a4i_semantic.audit_city_baseline\`
+        WITH acs_city AS (
+          SELECT
+            ROUND(SAFE_DIVIDE(SUM(a.black_pop), NULLIF(SUM(a.total_pop), 0)), 4) AS city_share_black,
+            ROUND(SAFE_DIVIDE(SUM(a.hispanic_pop), NULLIF(SUM(a.total_pop), 0)), 4) AS city_share_hispanic,
+            ROUND(SAFE_DIVIDE(SUM(a.white_pop), NULLIF(SUM(a.total_pop), 0)), 4) AS city_share_white,
+            ROUND(SAFE_DIVIDE(SUM(a.asian_pop), NULLIF(SUM(a.total_pop), 0)), 4) AS city_share_asian
+          FROM \`${PROJECT_ID}.a4i_semantic.dim_tract\` t
+          JOIN \`bigquery-public-data.census_bureau_acs.censustract_2020_5yr\` a
+            ON t.geo_id = a.geo_id
+          WHERE t.population > 0
+        )
+        SELECT b.*, acs_city.*
+        FROM \`${PROJECT_ID}.a4i_semantic.audit_city_baseline\` b
+        CROSS JOIN acs_city
         LIMIT 1;
       `;
       const [rows] = await client.query({ query });
@@ -253,6 +265,9 @@ export async function GET(req: NextRequest) {
           ROUND(t.no_vehicle_rate * 100, 1) AS no_car_pct,
           ROUND(t.poverty_rate * 100, 1) AS poverty_pct,
           ROUND(t.median_income, 0) AS median_income,
+          ROUND(SAFE_DIVIDE(a.black_pop, NULLIF(a.total_pop, 0)) * 100, 1) AS black_pct,
+          ROUND(SAFE_DIVIDE(a.hispanic_pop, NULLIF(a.total_pop, 0)) * 100, 1) AS hispanic_pct,
+          ROUND(SAFE_DIVIDE(a.white_pop, NULLIF(a.total_pop, 0)) * 100, 1) AS white_pct,
           h.max_cell_offset_f,
           h.avg_cell_offset_f,
           m.max_pred_offset_f,
@@ -263,13 +278,22 @@ export async function GET(req: NextRequest) {
             (SELECT COUNTIF(temp >= 95.0 - COALESCE(h.max_cell_offset_f, 3.0)) FROM UNNEST(st.temps) AS temp),
             st.n_years
           ), 0) AS INT64) AS hot_days_ge_95_per_yr,
+          ROUND(
+            COALESCE(h.max_cell_offset_f, 0) * 6.0 +
+            (t.no_vehicle_rate * 100 * 0.55) +
+            (t.poverty_rate * 100 * 0.2) +
+            (COALESCE(w.walk_pop, t.population) / 1000.0) * 1.2,
+            2
+          ) AS priority_score,
           m.top_drivers
         FROM \`${PROJECT_ID}.a4i_semantic.dim_tract\` t
         LEFT JOIN tract_heat h ON t.geo_id = h.geo_id
         LEFT JOIN tract_ml m ON t.geo_id = m.geo_id
         LEFT JOIN walk_shed w ON t.geo_id = w.geo_id
+        LEFT JOIN \`bigquery-public-data.census_bureau_acs.censustract_2020_5yr\` a ON t.geo_id = a.geo_id
         CROSS JOIN station_temps st
-        WHERE t.geo_id IN UNNEST(@candidateGeoIds);
+        WHERE t.geo_id IN UNNEST(@candidateGeoIds)
+        ORDER BY priority_score DESC;
       `;
       const [rows] = await client.query({
         query,

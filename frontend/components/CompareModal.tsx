@@ -40,16 +40,28 @@ export const CompareModal: React.FC<CompareModalProps> = ({
   const isRightFunded = rightSite.id <= centersToFund;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-      <div className="bg-[#0d1422] border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-5">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="compare-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-md"
+    >
+      <div className="bg-[#0d1322]/95 backdrop-blur-2xl border border-white/10 rounded-2xl w-full max-w-2xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-20 right-10 w-64 h-40 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.12),transparent_70%)] blur-2xl"
+        />
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-[#f97316] text-[#090d16] flex items-center justify-center text-xs font-extrabold">
+        <div className="flex items-center justify-between pb-4 border-b border-white/10 relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#fb923c] to-[#f97316] text-[#090d16] flex items-center justify-center text-xs font-extrabold shadow-sm ring-1 ring-inset ring-white/25">
               <GitCompare className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-slate-100">
+              <h3
+                id="compare-modal-title"
+                className="text-base font-extrabold text-slate-50"
+              >
                 Compare Candidate Sites: Site {leftSite.id} vs. Site{" "}
                 {rightSite.id}
               </h3>
@@ -61,8 +73,9 @@ export const CompareModal: React.FC<CompareModalProps> = ({
           </div>
           <button
             type="button"
+            aria-label="Close comparison dialog"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/[0.08] active:scale-[0.95] transition-all duration-200"
           >
             <X className="w-5 h-5" />
           </button>
@@ -70,15 +83,19 @@ export const CompareModal: React.FC<CompareModalProps> = ({
 
         {/* Interactive Site Selector Row if allSites provided */}
         {allSites.length > 1 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs relative z-10">
             <div>
-              <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">
+              <label
+                htmlFor="compare-left-site"
+                className="block text-[10px] font-mono uppercase text-slate-400 mb-1"
+              >
                 Left Comparison Site
               </label>
               <select
+                id="compare-left-site"
                 value={leftId}
                 onChange={(e) => setLeftId(Number(e.target.value))}
-                className="w-full bg-[#090d16] border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 font-semibold focus:outline-none focus:border-[#f97316]"
+                className="w-full bg-[#080d17] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-slate-100 font-semibold focus:outline-none focus:border-[#f97316]/70 focus:ring-2 focus:ring-[#f97316]/25 transition-all duration-200"
               >
                 {allSites.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -89,13 +106,17 @@ export const CompareModal: React.FC<CompareModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[10px] font-mono uppercase text-slate-400 mb-1">
+              <label
+                htmlFor="compare-right-site"
+                className="block text-[10px] font-mono uppercase text-slate-400 mb-1"
+              >
                 Right Comparison Site
               </label>
               <select
+                id="compare-right-site"
                 value={rightId}
                 onChange={(e) => setRightId(Number(e.target.value))}
-                className="w-full bg-[#090d16] border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 font-semibold focus:outline-none focus:border-[#f97316]"
+                className="w-full bg-[#080d17] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-slate-100 font-semibold focus:outline-none focus:border-[#f97316]/70 focus:ring-2 focus:ring-[#f97316]/25 transition-all duration-200"
               >
                 {allSites.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -107,10 +128,10 @@ export const CompareModal: React.FC<CompareModalProps> = ({
           </div>
         )}
 
-        {/* Comparison Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
+        {/* Comparison Grid (rounded-xl children inside rounded-2xl parent) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs relative z-10">
           {/* Left Site */}
-          <div className="bg-[#111a2c] border-2 border-[#f97316]/70 rounded-xl p-5 space-y-4">
+          <div className="bg-[#11192b]/90 backdrop-blur-md border border-[#f97316]/60 ring-1 ring-[#f97316]/20 rounded-xl p-5 space-y-4 shadow-lg">
             <div className="flex items-center justify-between">
               <span className="font-extrabold text-slate-100 text-sm">
                 {leftSite.id} · {leftSite.name}
@@ -180,9 +201,9 @@ export const CompareModal: React.FC<CompareModalProps> = ({
           </div>
 
           {/* Right Site */}
-          <div className="bg-[#090d16] border border-slate-800 rounded-xl p-5 space-y-4">
+          <div className="bg-[#090e1a]/90 backdrop-blur-md border border-white/10 rounded-xl p-5 space-y-4 shadow-inner">
             <div className="flex items-center justify-between">
-              <span className="font-extrabold text-slate-100 text-sm">
+              <span className="font-extrabold text-slate-50 text-sm">
                 {rightSite.id} · {rightSite.name}
               </span>
               <span
@@ -247,7 +268,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
         </div>
 
         {/* Why Displaced Callout */}
-        <div className="bg-[#221715] border border-[#f97316]/40 rounded-xl p-5 flex items-start gap-3.5 text-xs text-slate-200">
+        <div className="bg-gradient-to-r from-[#241614]/90 to-[#1a141b]/90 backdrop-blur-md border border-[#f97316]/40 rounded-xl p-5 flex items-start gap-3.5 text-xs text-slate-200 relative z-10 shadow-inner">
           <AlertCircle className="w-5 h-5 text-[#f97316] shrink-0 mt-0.5" />
           <p className="leading-relaxed">
             <span className="font-bold text-[#fdba74]">
@@ -266,11 +287,11 @@ export const CompareModal: React.FC<CompareModalProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex justify-end">
+        <div className="flex justify-end relative z-10">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl bg-[#f97316] hover:bg-orange-400 text-[#090d16] font-bold text-xs shadow-md transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-b from-[#fb923c] to-[#f97316] hover:from-orange-400 hover:to-orange-500 active:scale-[0.98] text-[#090d16] font-extrabold text-xs shadow-md shadow-orange-950/40 ring-1 ring-inset ring-white/25 transition-all duration-200"
           >
             Understood · Close
           </button>
