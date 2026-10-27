@@ -39,6 +39,7 @@ AUDIT_LABELS = {
 
 DEFAULT_RADIUS_M = 800.0
 NUMBER_WORDS = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five"}
+MAP_RUNNER_UPS = 2  # passed-over pins on the map; the ranked table keeps them all
 
 
 # ------------------------------------------------------------------ formatting
@@ -82,7 +83,8 @@ def _radius(s: SiteAssessment, fallback: float) -> float:
 
 def build_map(rec: PlacementRecommendation, radius_m: float) -> GeoJSONFeatureCollection:
     feats = []
-    for s, kind in [(s, "recommended_site") for s in rec.sites] + [(s, "runner_up_site") for s in rec.runner_up_sites]:
+    shown = [(s, "recommended_site") for s in rec.sites] + [(s, "runner_up_site") for s in rec.runner_up_sites[:MAP_RUNNER_UPS]]
+    for s, kind in shown:
         props = dict(rank=s.rank, geo_id=s.geo_id, label=site_name(s),
                      predicted_offset_f=s.predicted_offset_f, unmeasured=s.unmeasured)
         feats.append(MapFeature(geometry={"type": "Point", "coordinates": [s.lon, s.lat]},
@@ -189,8 +191,12 @@ def build_audit(audit: EquityAudit) -> tuple[list[AuditComparisonRow], AuditSumm
             toward_need=(m.ratio > 1) if higher_is_need else (m.ratio < 1),
             display_sites=fmt(m.sites_value), display_city=fmt(m.city_value)))
     n = sum(1 for r in rows if r.toward_need)
-    verdict = audit.verdict or ("Our sites skew toward need." if n * 2 > len(rows) else "Our sites don't clearly skew toward need.")
-    return rows, AuditSummary(measures_toward_need=n, measures_total=len(rows), verdict=verdict)
+    headline = (f"Our sites skew toward need on {f'all {n}' if n == len(rows) else f'{n} of {len(rows)}'} measures."
+                if n * 2 > len(rows) else "Our sites don't clearly skew toward need.")
+    short = audit.verdict and len(audit.verdict) <= 90
+    return rows, AuditSummary(measures_toward_need=n, measures_total=len(rows),
+                              verdict=audit.verdict if short else headline,
+                              detail=None if short else audit.verdict)
 
 
 def _pct_rank(values: list[float]) -> dict[int, float]:
@@ -207,7 +213,7 @@ def build_scatter(rec: PlacementRecommendation, tracts: TractLayer) -> AuditScat
     car = _pct_rank([r.no_vehicle_rate for r in rows])
     age = _pct_rank([r.share_65_plus for r in rows])
     ranks = {s.geo_id: (s.rank, True) for s in rec.sites}
-    ranks.update({s.geo_id: (s.rank, False) for s in rec.runner_up_sites if s.geo_id not in ranks})
+    ranks.update({s.geo_id: (s.rank, False) for s in rec.runner_up_sites[:MAP_RUNNER_UPS] if s.geo_id not in ranks})
     pts = []
     for i, r in enumerate(rows):
         rank, funded = ranks.get(r.geo_id, (None, None))

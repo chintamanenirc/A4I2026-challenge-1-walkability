@@ -134,7 +134,8 @@ class AuditComparisonRow(Strict):
 class AuditSummary(Strict):
     measures_toward_need: int
     measures_total: int
-    verdict: str
+    verdict: str                             # one line for the banner
+    detail: str | None = None                # the audit's full summary, when longer than a line
 
 
 class ScatterPoint(Strict):

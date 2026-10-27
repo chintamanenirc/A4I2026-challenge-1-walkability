@@ -2,14 +2,17 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 import logging
+import time
 from typing import Any
 import uuid
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from .config import Settings
+from .mcp_client import invoke_mcp_tool
 from .orchestrator import run_plan_turn
 from .schemas import AgentApiResponse, SiteAssessment
 
@@ -20,13 +23,20 @@ FEATURE_LABELS: dict[str, str] = {
     "pop_density_km2": "Street density",
     "housing_density_km2": "Housing density",
     "pop_within_1500m": "People within 1.5 km",
-    "median_year_built": "Older building stock",
+    "housing_within_1500m": "Homes within 1.5 km",
+    "median_year_built": "Building age",
+    "mean_year_built_1500m": "Building age within 1.5 km",
     "km_from_center": "Distance from downtown",
+    "meters_to_tract_point": "Distance to tract center",
     "water_share": "Water nearby",
     "dist_to_water_m": "Distance to water",
     "lat": "North–south position",
     "lon": "East–west position",
 }
+
+TRACT_LAYER_TTL_S = 3600
+TRACT_SIMPLIFY_M = 15.0
+_tract_cache: tuple[float, dict[str, Any]] | None = None
 
 app = FastAPI(
     title="Atlanta Urban Heat Planning Assistant API",
@@ -288,3 +298,45 @@ def plan_endpoint(req: PlanRequest) -> dict[str, Any]:
     state = _SESSIONS.setdefault(req.session_id, {})
     resp = run_plan_turn(req.message, session_state=state)
     return _to_api_dict(resp)
+
+
+def build_tract_layer(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Toolbox `tract_layer` rows -> GeoJSON FeatureCollection (heat-ui TractLayer)."""
+    features = []
+    for r in rows:
+        geom = r.get("geometry_json")
+        if isinstance(geom, str):
+            geom = json.loads(geom)
+        if not geom:
+            continue
+        pop = r.get("population")
+        features.append({
+            "type": "Feature",
+            "geometry": geom,
+            "properties": {
+                "geo_id": str(r["geo_id"]),
+                "predicted_offset_f": r.get("predicted_offset_f"),
+                "no_vehicle_rate": r.get("no_vehicle_rate"),
+                "share_65_plus": r.get("share_65_plus"),
+                "poverty_rate": r.get("poverty_rate"),
+                "population": int(pop) if pop is not None else None,
+            },
+        })
+    return {"type": "FeatureCollection", "features": features, "model_version": _settings.bqml_model_id}
+
+
+@app.get("/api/v1/tracts")
+def tracts_endpoint() -> dict[str, Any]:
+    """Every Atlanta tract for the heat-ui choropleth and audit scatter, via MCP Toolbox `tract_layer`.
+
+    Cached for an hour: it only changes when grid_predictions is re-scored.
+    """
+    global _tract_cache
+    if _tract_cache and time.time() - _tract_cache[0] < TRACT_LAYER_TTL_S:
+        return _tract_cache[1]
+    rows, _ = invoke_mcp_tool("tract_layer", tool_name="tract_layer", simplify_m=TRACT_SIMPLIFY_M)
+    layer = build_tract_layer(rows)
+    if not layer["features"]:
+        raise HTTPException(503, "tract_layer returned no tracts")
+    _tract_cache = (time.time(), layer)
+    return layer

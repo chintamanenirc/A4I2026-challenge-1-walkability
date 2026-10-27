@@ -1,11 +1,10 @@
-"""DRAFT of the contracts heat-planner-api produces (IMPLEMENTATION_PLAN.md section 3).
+"""What heat-ui reads from heat-planner-api: POST /api/v1/plan and GET /api/v1/tracts.
 
-heat-planner-api owns these. They are the UI service's reading of the plan's field lists so
-Stage 3 can start before docs/contracts/*.schema.json exist. Replace this module with the
-published schemas when Stage 2 ships them.
-
-Fields marked "UI ask" are not in the plan; they are what the P4 screens need and are listed
-as open questions for the agent-API lane.
+heat-planner-api owns its contracts (docs/contracts/*.schema.json). Over HTTP it serves them
+reshaped for this UI by _to_api_dict in agent/heat_planner/api.py; these models describe that
+served shape, not the raw schemas. The intent mapping happens there: k_sites -> k,
+refusal intents ("out_of_scope_city", "causal_simulation", ...) -> "out_of_scope",
+status "success" -> "ok". ui_service/samples/ holds real responses in this shape.
 
 Models ignore unknown fields (tolerant reader) so additions upstream don't break the UI.
 """
@@ -124,11 +123,11 @@ class SiteAssessment(Upstream):
     priority_score: float
     why: str | None = None
     provenance_ids: list[str] = []
-    # UI ask: tract-level demographics for "Who lives here vs. Atlanta" (0..1 rates)
+    # Site tract's demographics for "Who lives here vs. Atlanta" (0..1 rates)
     tract_no_vehicle_rate: float | None = None
     tract_share_65_plus: float | None = None
     tract_poverty_rate: float | None = None
-    # UI ask (runner-ups only): why it wasn't picked, e.g. "within 1.7 km of site 1"
+    # Runner-ups only: why it wasn't picked, e.g. "Within 2.0 km of Site 1"
     passed_over_reason: str | None = None
 
 
@@ -168,7 +167,7 @@ class EquityAudit(Upstream):
     residents_in_site_tracts: int | None = None
     measures: list[AuditMeasureRow]
     verdict: str | None = None
-    racial_composition: list[RacialCompositionRow] = []   # UI ask: shown only on request
+    racial_composition: list[RacialCompositionRow] = []   # shown only on request
     provenance_ids: list[str] = []
 
 
@@ -183,7 +182,7 @@ class PlacementRecommendation(Upstream):
     heat_frequency: CityHeatFrequencySummary | None = None
     equity_audit: EquityAudit | None = None
     proposal_markdown: str | None = None
-    # UI ask: the two prose sections the memo template can't build from data
+    # The two prose sections the memo template can't build from data
     proposal_sections: dict[Literal["why_these", "what_this_displaces"], str] = {}
     limitations: list[str] = []
     model_version: str = "offset_model_v1"
@@ -228,10 +227,10 @@ class TractFeature(Upstream):
 
 
 class TractLayer(Upstream):
-    """UI ask: GET /api/v1/tracts on heat-planner-api (via a heat-toolbox tool).
+    """GET /api/v1/tracts on heat-planner-api (heat-toolbox tool `tract_layer`).
 
-    Not in the plan. The choropleth and the audit scatter need every tract, and AgentApiResponse
-    only carries the chosen sites. Cached by the UI; changes only when the model is re-scored.
+    The choropleth and the audit scatter need every tract; AgentApiResponse only carries the
+    chosen sites. Cached by both services; it changes only when the model is re-scored.
     """
     type: Literal["FeatureCollection"] = "FeatureCollection"
     features: list[TractFeature]

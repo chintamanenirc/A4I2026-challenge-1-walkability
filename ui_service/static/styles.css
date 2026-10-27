@@ -272,6 +272,7 @@ h1, h2, h3 { letter-spacing: -.01em; }
 .score span:last-child { color: var(--heat-hi); font-size: 17px; }
 .vtext small { font: 600 11px var(--mono); letter-spacing: .08em; color: var(--heat-hi); }
 .vtext strong { display: block; font-size: 20px; }
+.vdetail { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--soft); max-width: 70ch; }
 .vchips { display: flex; flex-wrap: wrap; gap: 6px; }
 .vchips span { font: 12px var(--mono); padding: 4px 10px; border-radius: 999px; background: #0E1A24; color: var(--soft); }
 .vchips span.good { color: var(--heat-hi); }

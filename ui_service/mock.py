@@ -1,8 +1,9 @@
-"""Mock heat-planner-api for UI work before Stage 2 is deployed (UI_MOCK=1 or no AGENT_API_URL).
+"""Mock heat-planner-api for UI work without a deployed agent API (UI_MOCK=1 or no AGENT_API_URL).
 
-Answers come from samples/site_selection_atlanta.mock.json, re-labelled by a keyword guess at
-the intent. The tract layer is a synthetic grid with heat placed around the sample's sites.
-Every screen shows a mock banner while this is in use.
+Answers are real heat-planner-api output: docs/contracts/samples/*.json passed through the API's
+_to_api_dict adapter by scripts/build_ui_samples.py into samples/. A keyword guess at the intent
+picks the sample. The tract layer is still synthetic (a grid with heat placed around the sample's
+sites) because the real one needs BigQuery. Every screen shows a mock banner while this is in use.
 """
 
 import json
@@ -13,13 +14,17 @@ from pathlib import Path
 
 from .contracts.agent_api import AgentApiResponse, TractLayer
 
-SAMPLE = Path(__file__).parent / "samples" / "site_selection_atlanta.mock.json"
+SAMPLES = Path(__file__).parent / "samples"
 OTHER_CITIES = r"\b(phoenix|dallas|houston|chicago|seattle|los angeles|new york|brooklyn|manhattan|bronx)\b"
 
 
-@lru_cache(maxsize=1)
+@lru_cache(maxsize=None)
+def _load(name: str) -> AgentApiResponse:
+    return AgentApiResponse.model_validate(json.loads((SAMPLES / f"{name}.json").read_text(encoding="utf-8")))
+
+
 def _sample() -> AgentApiResponse:
-    return AgentApiResponse.model_validate(json.loads(SAMPLE.read_text(encoding="utf-8")))
+    return _load("site_selection_atlanta")
 
 
 def _intent_for(msg: str) -> str:
@@ -32,29 +37,27 @@ def _intent_for(msg: str) -> str:
         return "equity_audit"
     if re.search(r"\bhow often\b|\b9[05]\s*°?f\b|\bhot days\b", m):
         return "heat_frequency"
+    if re.search(r"\bwhy (is|does)\b|\btract \d{11}\b|-?\d{2}\.\d+,\s*-?\d{2}\.\d+", m):
+        return "explain_location"
     return "site_selection"
 
 
+# Questions with their own real sample; the rest reuse site_selection's data with a short note.
+OWN_SAMPLE = {"compare_sites": "compare_site_4_atlanta", "explain_location": "explain_location_atlanta"}
 NARRATIVE = {
-    "site_selection": None,  # the sample's own
-    "draft_proposal": "The council proposal is drafted from the three sites and the equity audit [P1][P4]. Review it on the Proposal page before it goes anywhere.",
-    "compare_sites": "Site 4 runs slightly hotter, but far fewer of its households lack a car, so funding it instead of Site 3 would reach fewer people who can't get to relief on their own [P1].",
-    "equity_audit": "The three recommended tracts are poorer, more car-free and older than the Atlanta average on all four measures [P4].",
-    "heat_frequency": "Atlanta's stations averaged about 24 days a year at or above 95°F over 2019–2025; the recommended sites see roughly 33–35 equivalent days [P3]. Seven years show variability, not a long-term trend.",
+    "draft_proposal": "The council proposal is drafted from the recommended sites and the equity audit. "
+                      "Review it on the Proposal page before it goes anywhere.",
+    "equity_audit": None,  # the audit's own summary
+    "heat_frequency": "Atlanta's stations averaged {days} days a year at or above 95°F over 2019–2025. "
+                      "Seven years show year-to-year variability, not a long-term trend.",
 }
 
 
 def plan(message: str, k: int | None = None) -> AgentApiResponse:
-    base = _sample()
     if re.search(OTHER_CITIES, message.lower()):
-        intent = base.intent.model_copy(update={
-            "intent_type": "out_of_scope", "status": "out_of_scope", "refusal_reason": "other_city",
-            "refusal_explanation": "Only Atlanta's data is loaded."})
-        return base.model_copy(update={
-            "status": "out_of_scope", "intent": intent, "recommendation": None, "data_result": None, "citations": [],
-            "narrative": "I only have Atlanta's heat data and model loaded, so I can't place centers there. "
-                         "Offsets are relative to each city's own average and don't transfer between cities."})
+        return _load("refusal_out_of_scope")
     intent_type = _intent_for(message)
+    base = _load(OWN_SAMPLE.get(intent_type, "site_selection_atlanta"))
     rec = base.recommendation
     m = re.search(r"\b([1-5])\s+(?:permanent\s+)?(?:cooling\s+)?cent", message.lower())
     if k is None and m:
@@ -64,7 +67,11 @@ def plan(message: str, k: int | None = None) -> AgentApiResponse:
         k = max(1, min(k, len(everything) - 1))
         rec = rec.model_copy(update={"sites": everything[:k], "runner_up_sites": everything[k:]})
     intent = base.intent.model_copy(update={"intent_type": intent_type, "k": len(rec.sites)})
-    narrative = NARRATIVE[intent_type] or base.narrative.replace("**3 centers**", f"**{len(rec.sites)} centers**")
+    narrative = base.narrative
+    if intent_type in NARRATIVE:
+        hf = rec.heat_frequency
+        narrative = (NARRATIVE[intent_type] or (rec.equity_audit.verdict if rec.equity_audit else "") or base.narrative)
+        narrative = narrative.format(days=f"{hf.mean_days_ge_95_f:.1f}" if hf and hf.mean_days_ge_95_f else "about 24")
     return base.model_copy(update={"intent": intent, "recommendation": rec, "narrative": narrative})
 
 
