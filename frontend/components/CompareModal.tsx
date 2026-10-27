@@ -20,106 +20,156 @@ export const CompareModal: React.FC<CompareModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-[#0c121d] border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+      <div className="bg-[#0d1422] border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center text-xs font-bold">
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded-lg bg-[#f97316] text-[#090d16] flex items-center justify-center text-xs font-extrabold">
               VS
             </div>
-            <h3 className="text-base font-bold text-slate-100">
-              Compare: {siteA.name} (Funded) vs. {siteB.name} (Site 4)
+            <h3 className="text-base font-extrabold text-slate-100">
+              Compare: Site {siteA.id} ({siteA.name}) vs. Site 4 ({siteB.name})
             </h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors"
+            className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Comparison Grid with gap-6 and consistent p-6 */}
-        <div className="grid grid-cols-2 gap-6 text-xs">
+        {/* Comparison Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
           {/* Site A (Funded) */}
-          <div className="bg-slate-900/80 border border-orange-500/50 rounded-xl p-6 space-y-4">
+          <div className="bg-[#111a2c] border-2 border-[#f97316]/70 rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-100 text-sm">{siteA.name}</span>
-              <span className="px-2.5 py-1 rounded bg-emerald-950 text-emerald-400 font-bold text-[10px]">
-                FUNDED #1
+              <span className="font-extrabold text-slate-100 text-sm">
+                {siteA.id} · {siteA.name}
+              </span>
+              <span className="px-2 py-0.5 rounded bg-emerald-950 border border-emerald-500/50 text-emerald-400 font-mono font-bold text-[10px]">
+                FUNDED #{siteA.id}
               </span>
             </div>
-            <div className="space-y-2 font-mono text-slate-300">
+            <div className="space-y-2.5 font-mono text-slate-300">
               <div className="flex justify-between">
-                <span className="text-slate-400 font-sans">Offset:</span>
-                <span className="font-bold text-orange-400">+{siteA.offsetF.toFixed(1)}°F</span>
+                <span className="text-slate-400 font-sans">Heat offset:</span>
+                <span className="font-bold text-[#f97316]">
+                  +{siteA.offsetF.toFixed(1)}°F
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400 font-sans">Residents reached:</span>
+                <span className="text-slate-400 font-sans">
+                  Residents nearby:
+                </span>
                 <span>{siteA.residentsReached.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400 font-sans">Poverty rate:</span>
-                <span className="text-rose-400 font-bold">{siteA.demographics.povertyRatePct}%</span>
+                <span className="text-[#fdba74] font-bold">
+                  {siteA.povertyRate}%
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400 font-sans">No vehicle rate:</span>
-                <span className="text-rose-400 font-bold">{siteA.demographics.noVehiclePct}%</span>
+                <span className="text-slate-400 font-sans">
+                  Households without car:
+                </span>
+                <span className="text-[#fdba74] font-bold">
+                  {siteA.noCarPct}%
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400 font-sans">Primary driver:</span>
-                <span className="capitalize text-slate-200">{siteA.dominantDriver}</span>
+                <span className="text-slate-400 font-sans">
+                  Seniors (65+):
+                </span>
+                <span>{siteA.seniorsPct}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-sans">
+                  Dominant driver:
+                </span>
+                <span className="text-slate-200 font-sans font-semibold">
+                  {siteA.dominantDriver}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Site B (Site 4 - Bankhead) */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-4">
+          {/* Site B (Site 4) */}
+          <div className="bg-[#090d16] border border-slate-800 rounded-xl p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-100 text-sm">{siteB.name}</span>
-              <span className="px-2.5 py-1 rounded bg-slate-800 text-slate-400 font-bold text-[10px]">
+              <span className="font-extrabold text-slate-100 text-sm">
+                4 · {siteB.name}
+              </span>
+              <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono font-bold text-[10px]">
                 DISPLACED #4
               </span>
             </div>
-            <div className="space-y-2 font-mono text-slate-300">
+            <div className="space-y-2.5 font-mono text-slate-300">
               <div className="flex justify-between">
-                <span className="text-slate-400 font-sans">Offset:</span>
-                <span className="font-bold text-orange-400">+{siteB.offsetF.toFixed(1)}°F</span>
+                <span className="text-slate-400 font-sans">Heat offset:</span>
+                <span className="font-bold text-[#f97316]">
+                  +{siteB.offsetF.toFixed(1)}°F
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400 font-sans">Residents reached:</span>
+                <span className="text-slate-400 font-sans">
+                  Residents nearby:
+                </span>
                 <span>{siteB.residentsReached.toLocaleString()}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400 font-sans">Poverty rate:</span>
-                <span>{siteB.demographics.povertyRatePct}%</span>
+                <span>{siteB.povertyRate}%</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400 font-sans">No vehicle rate:</span>
-                <span>{siteB.demographics.noVehiclePct}%</span>
+                <span className="text-slate-400 font-sans">
+                  Households without car:
+                </span>
+                <span>{siteB.noCarPct}%</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400 font-sans">Primary driver:</span>
-                <span className="capitalize text-slate-200">{siteB.dominantDriver}</span>
+                <span className="text-slate-400 font-sans">
+                  Seniors (65+):
+                </span>
+                <span>{siteB.seniorsPct}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-sans">
+                  Dominant driver:
+                </span>
+                <span className="text-slate-200 font-sans font-semibold">
+                  {siteB.dominantDriver}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Why Displaced Callout */}
-        <div className="bg-amber-950/20 border border-amber-500/40 rounded-xl p-6 flex items-start gap-4 text-xs text-amber-200/90">
-          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+        <div className="bg-[#221715] border border-[#f97316]/40 rounded-xl p-5 flex items-start gap-3.5 text-xs text-slate-200">
+          <AlertCircle className="w-5 h-5 text-[#f97316] shrink-0 mt-0.5" />
           <p className="leading-relaxed">
-            <span className="font-bold text-amber-300">Why site 4 was passed over:</span> While {siteB.name} experiences elevated temperatures (+{siteB.offsetF.toFixed(1)}°F), its demographic vulnerability is markedly lower (19.2% poverty vs. 32.1% in {siteA.name}). Furthermore, placing a center here would overlap within the 1-mile transit radius of existing higher-need cooling corridors.
+            <span className="font-bold text-[#fdba74]">
+              Why site 4 was passed over:
+            </span>{" "}
+            While {siteB.name} experiences elevated heat (+
+            {siteB.offsetF.toFixed(1)}°F), its vulnerability is markedly lower (
+            {siteB.povertyRate}% poverty and {siteB.noCarPct}% car-free
+            households vs. {siteA.povertyRate}% poverty and {siteA.noCarPct}%
+            car-free in {siteA.name}). Furthermore, each selected site must reach
+            vulnerable residents that earlier picks missed.
           </p>
         </div>
 
         {/* Actions */}
         <div className="flex justify-end">
           <button
+            type="button"
             onClick={onClose}
-            className="px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs shadow-md transition-colors"
+            className="px-5 py-2.5 rounded-xl bg-[#f97316] hover:bg-orange-400 text-[#090d16] font-bold text-xs shadow-md transition-colors"
           >
             Understood · Close
           </button>

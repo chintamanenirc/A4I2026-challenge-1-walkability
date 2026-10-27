@@ -7,197 +7,340 @@ import { SitesTab } from "../components/SitesTab";
 import { EquityAuditTab } from "../components/EquityAuditTab";
 import { ProposalTab } from "../components/ProposalTab";
 import { CompareModal } from "../components/CompareModal";
-import { SiteData, CityBaseline } from "../components/types";
+import { SiteData, CityBaseline, TractScatterPoint } from "../components/types";
 
-// Default Atlanta sites matching BigQuery semantic layer & BQML model
+// Atlanta candidate sites calibrated to the BigQuery semantic layer & BQML EXPLAIN_PREDICT
 const INITIAL_SITES: SiteData[] = [
   {
     id: 1,
-    name: "Thomasville",
-    tractId: "13121006802",
-    shortTract: "68.02",
-    lat: 33.7043,
-    lon: -84.3610,
-    offsetF: 4.1,
-    daysAbove95: 18,
-    residentsReached: 14200,
-    annualCost: "$185,000",
-    dominantDriver: "Impervious surface",
-    dominantDiagnosis: "Mostly pavement. Shade structures and cool pavement around the site target the cause. We can diagnose the cause; we can’t simulate the fix.",
-    drivers: [
-      { feature: "impervious_surface", attributionF: 2.1 },
-      { feature: "street_density", attributionF: 1.4 },
-      { feature: "land_use_mix", attributionF: 0.9 },
-      { feature: "park_proximity", attributionF: -0.3 },
-    ],
-    demographics: {
-      noVehiclePct: 24.6,
-      age65PlusPct: 17.8,
-      povertyRatePct: 32.1,
-      medianIncome: 38400,
-      totalPop: 3410,
-    },
-    funded: true,
-  },
-  {
-    id: 2,
-    name: "Peoplestown",
-    tractId: "13121006200",
-    shortTract: "62.00",
-    lat: 33.7285,
-    lon: -84.3850,
-    offsetF: 3.7,
-    daysAbove95: 18,
-    residentsReached: 12800,
-    annualCost: "$175,000",
-    dominantDriver: "Street density",
-    dominantDiagnosis: "Commercial corridor with high street thermal mass and low reflectivity. Transit-connected hub recommended for shaded waiting structures.",
-    drivers: [
-      { feature: "street_density", attributionF: 1.8 },
-      { feature: "impervious_surface", attributionF: 1.5 },
-      { feature: "land_use_mix", attributionF: 0.7 },
-      { feature: "park_proximity", attributionF: -0.3 },
-    ],
-    demographics: {
-      noVehiclePct: 21.4,
-      age65PlusPct: 16.2,
-      povertyRatePct: 28.4,
-      medianIncome: 42100,
-      totalPop: 2025,
-    },
-    funded: true,
-  },
-  {
-    id: 3,
     name: "Mechanicsville",
     tractId: "13121005800",
     shortTract: "58.00",
-    lat: 33.7380,
-    lon: -84.4020,
-    offsetF: 3.2,
-    daysAbove95: 17,
-    residentsReached: 11400,
-    annualCost: "$160,000",
-    dominantDriver: "Land-use mix",
-    dominantDiagnosis: "High industrial footprint and lack of vegetative buffer adjacent to residential blocks. High transit dependence among senior residents.",
+    lat: 33.738,
+    lng: -84.398,
+    offsetF: 4.4,
+    hotDaysPerSummer: 44,
+    residentsReached: 4890,
+    estAnnualCost: "$180,000",
+    dominantDriver: "Impervious surface",
+    dominantDiagnosis:
+      "Mostly pavement. Shade structures and cool pavement around the site target the cause. We can diagnose the cause; we can’t simulate the fix.",
     drivers: [
-      { feature: "land_use_mix", attributionF: 1.6 },
-      { feature: "impervious_surface", attributionF: 1.3 },
-      { feature: "street_density", attributionF: 0.8 },
-      { feature: "park_proximity", attributionF: -0.5 },
+      {
+        feature: "impervious_surface",
+        label: "Impervious surface",
+        attributionF: 2.3,
+      },
+      {
+        feature: "street_density",
+        label: "Street density",
+        attributionF: 1.4,
+      },
+      {
+        feature: "land_use_mix",
+        label: "Land-use mix",
+        attributionF: 1.0,
+      },
+      {
+        feature: "park_proximity",
+        label: "Park proximity",
+        attributionF: -0.3,
+      },
     ],
-    demographics: {
-      noVehiclePct: 28.9,
-      age65PlusPct: 14.5,
-      povertyRatePct: 34.8,
-      medianIncome: 33900,
-      totalPop: 2890,
-    },
-    funded: true,
+    noCarPct: 28.4,
+    seniorsPct: 16.2,
+    povertyRate: 34.8,
+    medianIncome: 33900,
+    blackPct: 81.4,
+    hispanicPct: 5.2,
+    whitePct: 9.8,
+    mapX: 39,
+    mapY: 36,
+    isFunded: true,
+  },
+  {
+    id: 2,
+    name: "Old Fourth Ward",
+    tractId: "13121002900",
+    shortTract: "29.00",
+    lat: 33.755,
+    lng: -84.372,
+    offsetF: 3.9,
+    hotDaysPerSummer: 42,
+    residentsReached: 4120,
+    estAnnualCost: "$180,000",
+    dominantDriver: "Impervious surface",
+    dominantDiagnosis:
+      "Dense commercial corridors and dark asphalt parking lots trap afternoon radiant heat. Shade structures and cool-roof retrofits near Boulevard address the dominant driver.",
+    drivers: [
+      {
+        feature: "impervious_surface",
+        label: "Impervious surface",
+        attributionF: 1.9,
+      },
+      {
+        feature: "street_density",
+        label: "Street density",
+        attributionF: 1.4,
+      },
+      {
+        feature: "land_use_mix",
+        label: "Land-use mix",
+        attributionF: 0.9,
+      },
+      {
+        feature: "park_proximity",
+        label: "Park proximity",
+        attributionF: -0.3,
+      },
+    ],
+    noCarPct: 24.1,
+    seniorsPct: 17.8,
+    povertyRate: 28.9,
+    medianIncome: 41200,
+    blackPct: 74.6,
+    hispanicPct: 6.1,
+    whitePct: 14.5,
+    mapX: 62,
+    mapY: 57,
+    isFunded: true,
+  },
+  {
+    id: 3,
+    name: "West End",
+    tractId: "13121006802",
+    shortTract: "68.02",
+    lat: 33.735,
+    lng: -84.417,
+    offsetF: 3.6,
+    hotDaysPerSummer: 41,
+    residentsReached: 3250,
+    estAnnualCost: "$180,000",
+    dominantDriver: "Impervious surface",
+    dominantDiagnosis:
+      "High impervious surface footprint along the Lee St transit corridor with limited tree canopy buffer adjacent to senior housing blocks.",
+    drivers: [
+      {
+        feature: "impervious_surface",
+        label: "Impervious surface",
+        attributionF: 1.8,
+      },
+      {
+        feature: "street_density",
+        label: "Street density",
+        attributionF: 1.1,
+      },
+      {
+        feature: "land_use_mix",
+        label: "Land-use mix",
+        attributionF: 1.0,
+      },
+      {
+        feature: "park_proximity",
+        label: "Park proximity",
+        attributionF: -0.3,
+      },
+    ],
+    noCarPct: 22.5,
+    seniorsPct: 14.6,
+    povertyRate: 31.7,
+    medianIncome: 39300,
+    blackPct: 82.5,
+    hispanicPct: 4.9,
+    whitePct: 9.3,
+    mapX: 48,
+    mapY: 75,
+    isFunded: true,
   },
   {
     id: 4,
-    name: "Bankhead",
+    name: "Bankhead / Midtown Edge",
     tractId: "13121002400",
     shortTract: "24.00",
-    lat: 33.7540,
-    lon: -84.4320,
-    offsetF: 3.0,
-    daysAbove95: 16,
-    residentsReached: 9600,
-    annualCost: "$155,000",
-    dominantDriver: "Impervious surface",
-    dominantDiagnosis: "Overlaps within the 1-mile transit radius of higher-priority Westside tracts with greater overall demographic vulnerability.",
+    lat: 33.768,
+    lng: -84.428,
+    offsetF: 3.1,
+    hotDaysPerSummer: 39,
+    residentsReached: 2480,
+    estAnnualCost: "$165,000",
+    dominantDriver: "Street density",
+    dominantDiagnosis:
+      "Ranked 4th. Hot industrial/arterial edge, but its tract has lower car-free household share (12.4%) and partially overlaps earlier picks.",
     drivers: [
-      { feature: "impervious_surface", attributionF: 1.4 },
-      { feature: "street_density", attributionF: 1.1 },
-      { feature: "land_use_mix", attributionF: 0.8 },
-      { feature: "park_proximity", attributionF: -0.3 },
+      {
+        feature: "impervious_surface",
+        label: "Impervious surface",
+        attributionF: 1.4,
+      },
+      {
+        feature: "street_density",
+        label: "Street density",
+        attributionF: 1.2,
+      },
+      {
+        feature: "land_use_mix",
+        label: "Land-use mix",
+        attributionF: 0.8,
+      },
+      {
+        feature: "park_proximity",
+        label: "Park proximity",
+        attributionF: -0.3,
+      },
     ],
-    demographics: {
-      noVehiclePct: 16.2,
-      age65PlusPct: 11.8,
-      povertyRatePct: 19.2,
-      medianIncome: 54200,
-      totalPop: 2450,
-    },
-    whyNotChosen: "Bankhead ranked 4th. Each pick must reach people the earlier picks missed. Overlaps within the service buffer of higher-need priority tracts.",
-    funded: false,
+    noCarPct: 12.4,
+    seniorsPct: 11.2,
+    povertyRate: 17.8,
+    medianIncome: 58400,
+    blackPct: 54.0,
+    hispanicPct: 7.2,
+    whitePct: 33.1,
+    mapX: 88,
+    mapY: 42,
+    isFunded: false,
   },
   {
     id: 5,
     name: "Lakewood Heights",
     tractId: "13121006500",
     shortTract: "65.00",
-    lat: 33.6980,
-    lon: -84.3910,
+    lat: 33.702,
+    lng: -84.389,
     offsetF: 2.8,
-    daysAbove95: 16,
-    residentsReached: 8200,
-    annualCost: "$150,000",
+    hotDaysPerSummer: 38,
+    residentsReached: 2190,
+    estAnnualCost: "$160,000",
     dominantDriver: "Street density",
-    dominantDiagnosis: "Southern fringe residential area with moderate tree canopy coverage.",
+    dominantDiagnosis:
+      "Southern residential tract with moderate tree canopy cooling and lower senior density than top 3 picks.",
     drivers: [
-      { feature: "street_density", attributionF: 1.2 },
-      { feature: "impervious_surface", attributionF: 1.0 },
-      { feature: "land_use_mix", attributionF: 0.9 },
-      { feature: "park_proximity", attributionF: -0.3 },
+      {
+        feature: "impervious_surface",
+        label: "Impervious surface",
+        attributionF: 1.2,
+      },
+      {
+        feature: "street_density",
+        label: "Street density",
+        attributionF: 1.1,
+      },
+      {
+        feature: "land_use_mix",
+        label: "Land-use mix",
+        attributionF: 0.8,
+      },
+      {
+        feature: "park_proximity",
+        label: "Park proximity",
+        attributionF: -0.3,
+      },
     ],
-    demographics: {
-      noVehiclePct: 17.5,
-      age65PlusPct: 12.1,
-      povertyRatePct: 22.4,
-      medianIncome: 49000,
-      totalPop: 2100,
-    },
-    funded: false,
+    noCarPct: 16.8,
+    seniorsPct: 12.1,
+    povertyRate: 22.4,
+    medianIncome: 48900,
+    blackPct: 71.2,
+    hispanicPct: 8.4,
+    whitePct: 16.9,
+    mapX: 16,
+    mapY: 75,
+    isFunded: false,
   },
 ];
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<"ask" | "sites" | "equity" | "proposal">("ask");
+  const [activeTab, setActiveTab] = useState<
+    "ask" | "sites" | "equity" | "proposal"
+  >("ask");
   const [sites, setSites] = useState<SiteData[]>(INITIAL_SITES);
   const [selectedSiteId, setSelectedSiteId] = useState<number>(1);
   const [centersToFund, setCentersToFund] = useState<number>(3);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [isLoadingMessage, setIsLoadingMessage] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [lastUserQuery, setLastUserQuery] = useState<string | undefined>(
+    undefined
+  );
+  const [agentReply, setAgentReply] = useState<string | null>(null);
+  const [agentProposalNote, setAgentProposalNote] = useState<string | null>(
+    null
+  );
+  const [tractsScatter, setTractsScatter] = useState<TractScatterPoint[]>([]);
 
   const [cityBaseline, setCityBaseline] = useState<CityBaseline>({
-    totalPop: 1447970,
-    povertyRatePct: 13.9,
-    noVehiclePct: 8.2,
-    age65PlusPct: 12.5,
     medianIncome: 75714,
+    povertyRate: 13.9,
+    noCarPct: 8.2,
+    seniorsPct: 12.5,
+    blackPct: 47.2,
+    hispanicPct: 6.0,
+    whitePct: 40.4,
+    asianPct: 4.8,
   });
 
-  // Fetch real city baseline from BigQuery semantic layer on mount
+  // Load real city baseline and census tract scatter points from BigQuery semantic layer
   useEffect(() => {
-    async function loadBaseline() {
+    async function loadSemanticData() {
       try {
-        const res = await fetch("/api/semantic?type=baseline");
-        if (res.ok) {
-          const data = await res.json();
+        const [baselineRes, scatterRes] = await Promise.all([
+          fetch("/api/semantic?type=baseline"),
+          fetch("/api/semantic?type=tracts_scatter"),
+        ]);
+
+        if (baselineRes.ok) {
+          const data = await baselineRes.json();
           if (data?.baseline) {
-            setCityBaseline({
-              totalPop: data.baseline.total_population || 1447970,
-              povertyRatePct: +(data.baseline.city_poverty_rate * 100).toFixed(1) || 13.9,
-              noVehiclePct: +(data.baseline.city_no_vehicle_rate * 100).toFixed(1) || 8.2,
-              age65PlusPct: +(data.baseline.city_share_65_plus * 100).toFixed(1) || 12.5,
-              medianIncome: Math.round(data.baseline.city_median_income_usd) || 75714,
-            });
+            const b = data.baseline;
+            setCityBaseline((prev) => ({
+              ...prev,
+              povertyRate:
+                typeof b.city_poverty_rate === "number"
+                  ? +(b.city_poverty_rate * 100).toFixed(1)
+                  : prev.povertyRate,
+              noCarPct:
+                typeof b.city_no_vehicle_rate === "number"
+                  ? +(b.city_no_vehicle_rate * 100).toFixed(1)
+                  : prev.noCarPct,
+              seniorsPct:
+                typeof b.city_share_65_plus === "number"
+                  ? +(b.city_share_65_plus * 100).toFixed(1)
+                  : prev.seniorsPct,
+              medianIncome:
+                typeof b.city_median_income_usd === "number"
+                  ? Math.round(b.city_median_income_usd)
+                  : prev.medianIncome,
+              blackPct:
+                typeof b.city_share_black === "number"
+                  ? +(b.city_share_black * 100).toFixed(1)
+                  : prev.blackPct,
+              hispanicPct:
+                typeof b.city_share_hispanic === "number"
+                  ? +(b.city_share_hispanic * 100).toFixed(1)
+                  : prev.hispanicPct,
+              whitePct:
+                typeof b.city_share_white === "number"
+                  ? +(b.city_share_white * 100).toFixed(1)
+                  : prev.whitePct,
+            }));
+          }
+        }
+
+        if (scatterRes.ok) {
+          const sData = await scatterRes.json();
+          if (Array.isArray(sData?.tracts) && sData.tracts.length > 0) {
+            setTractsScatter(sData.tracts);
           }
         }
       } catch (err) {
-        console.error("Failed to load city baseline from semantic API:", err);
+        console.error("Failed to load semantic API data:", err);
       }
     }
-    loadBaseline();
+    loadSemanticData();
   }, []);
 
-  // Handle agent queries
   const handleSendMessage = async (query: string) => {
     setIsLoadingMessage(true);
+    setLastUserQuery(query);
     try {
       const res = await fetch("/api/agent", {
         method: "POST",
@@ -212,25 +355,58 @@ export default function Home() {
 
       if (res.ok) {
         const data = await res.json();
-        if (data.structuredData?.sites && data.structuredData.sites.length > 0) {
-          // Merge incoming structured sites with existing sites
-          const updatedSites = [...sites];
-          data.structuredData.sites.forEach((site: any, idx: number) => {
-            if (idx < updatedSites.length) {
-              updatedSites[idx] = {
-                ...updatedSites[idx],
-                offsetF: site.predictedOffsetF || updatedSites[idx].offsetF,
-                drivers: site.drivers || updatedSites[idx].drivers,
-                demographics: {
-                  ...updatedSites[idx].demographics,
-                  povertyRatePct: site.demographics?.povertyRatePct ?? updatedSites[idx].demographics.povertyRatePct,
-                  noVehiclePct: site.demographics?.noVehicleRatePct ?? updatedSites[idx].demographics.noVehiclePct,
-                  medianIncome: site.demographics?.medianIncome ?? updatedSites[idx].demographics.medianIncome,
-                },
-              };
-            }
+        const replyText =
+          data?.response ||
+          data?.primary?.response ||
+          data?.primary?.reply ||
+          data?.reply ||
+          (typeof data?.structuredData?.summary === "string"
+            ? data.structuredData.summary
+            : null);
+        if (replyText) {
+          setAgentReply(replyText);
+        }
+
+        const incomingSites =
+          data?.primary?.structuredData?.sites || data?.structuredData?.sites;
+        if (Array.isArray(incomingSites) && incomingSites.length > 0) {
+          setSites((prevSites) => {
+            const updated = [...prevSites];
+            incomingSites.forEach((site: Record<string, any>, idx: number) => {
+              if (idx < updated.length) {
+                updated[idx] = {
+                  ...updated[idx],
+                  offsetF:
+                    typeof site.predictedOffsetF === "number"
+                      ? site.predictedOffsetF
+                      : updated[idx].offsetF,
+                  drivers:
+                    Array.isArray(site.drivers) && site.drivers.length >= 3
+                      ? site.drivers.slice(0, 4).map((d: any) => ({
+                          feature: d.feature,
+                          label: d.feature
+                            .replace(/_/g, " ")
+                            .replace(/\b\w/g, (c: string) => c.toUpperCase()),
+                          attributionF: d.attributionF,
+                        }))
+                      : updated[idx].drivers,
+                  povertyRate:
+                    typeof site.demographics?.povertyRatePct === "number"
+                      ? site.demographics.povertyRatePct
+                      : updated[idx].povertyRate,
+                  noCarPct:
+                    typeof site.demographics?.noVehicleRatePct === "number"
+                      ? site.demographics.noVehicleRatePct
+                      : updated[idx].noCarPct,
+                  medianIncome:
+                    typeof site.demographics?.medianIncome === "number"
+                      ? site.demographics.medianIncome
+                      : updated[idx].medianIncome,
+                };
+              }
+            });
+            return updated;
           });
-          setSites(updatedSites);
         }
       }
     } catch (e) {
@@ -242,20 +418,72 @@ export default function Home() {
 
   const handleRegenerateProposal = async () => {
     setIsRegenerating(true);
-    await handleSendMessage("Regenerate proposal draft for top sites in Atlanta");
-    setIsRegenerating(false);
+    try {
+      const res = await fetch("/api/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt:
+            "Draft a concise 2-sentence council briefing summary for our top 3 permanent cooling centers in Atlanta.",
+          agentId: "atlanta_heat_agent",
+          compare: false,
+          sessionId: `proposal_${Date.now()}`,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const note =
+          data?.response ||
+          data?.primary?.response ||
+          data?.primary?.reply ||
+          data?.reply;
+        if (note) {
+          setAgentProposalNote(note);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to regenerate proposal note:", err);
+    } finally {
+      setIsRegenerating(false);
+    }
   };
 
   const selectedSite = sites.find((s) => s.id === selectedSiteId) || sites[0];
-  const site4 = sites.find((s) => s.id === 4) || sites[3];
+  const site4 = sites.find((s) => s.id === 4) || sites[3] || sites[0];
+  const fundedSites = sites.slice(0, centersToFund);
+  const totalReached = fundedSites.reduce(
+    (sum, s) => sum + s.residentsReached,
+    0
+  );
+  const totalBudgetNum = fundedSites.reduce((sum, s) => {
+    const num = parseInt((s.estAnnualCost || "$180,000").replace(/[^0-9]/g, ""), 10);
+    return sum + (isNaN(num) ? 180000 : num);
+  }, 0);
+  const totalBudgetStr = `$${Math.round(totalBudgetNum / 1000)}k`;
 
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 font-sans selection:bg-orange-500 selection:text-white flex flex-col">
-      {/* Top Navbar */}
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans selection:bg-[#f97316]/30 selection:text-orange-200 flex flex-col relative isolate">
+      {/* Ambient Radial Gradient Backdrop for Linear/Stripe Depth */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
+      >
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[960px] h-[420px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.09),transparent_70%)] blur-3xl" />
+        <div className="absolute top-1/3 -right-32 w-[520px] h-[520px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(56,189,248,0.05),transparent_70%)] blur-3xl" />
+      </div>
 
-      {/* Main Content Body - Centered cleanly with max-w-7xl, mx-auto, p-6 padding, and gap-6 spacing */}
-      <main className="flex-1 w-full max-w-7xl mx-auto p-6 flex flex-col gap-6">
+      {/* Top Navbar + Scenario Bar */}
+      <Navbar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        centersToFund={centersToFund}
+        totalReached={totalReached}
+        totalBudgetStr={totalBudgetStr}
+        onOpenCompareModal={() => setIsCompareModalOpen(true)}
+      />
+
+      {/* Main Content Container */}
+      <main className="flex-1 w-full max-w-[1440px] mx-auto p-6 sm:p-8 flex flex-col gap-8">
         {activeTab === "ask" && (
           <AskTab
             sites={sites}
@@ -267,6 +495,8 @@ export default function Home() {
             onOpenCompareModal={() => setIsCompareModalOpen(true)}
             onSendMessage={handleSendMessage}
             isLoadingMessage={isLoadingMessage}
+            lastUserQuery={lastUserQuery}
+            agentReply={agentReply}
           />
         )}
 
@@ -284,6 +514,7 @@ export default function Home() {
           <EquityAuditTab
             sites={sites}
             cityBaseline={cityBaseline}
+            tractsScatter={tractsScatter}
             onNavigateTab={setActiveTab}
           />
         )}
@@ -291,8 +522,11 @@ export default function Home() {
         {activeTab === "proposal" && (
           <ProposalTab
             sites={sites}
+            cityBaseline={cityBaseline}
+            centersToFund={centersToFund}
             onRegenerate={handleRegenerateProposal}
             isRegenerating={isRegenerating}
+            agentProposalNote={agentProposalNote}
           />
         )}
       </main>
