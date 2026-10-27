@@ -47,14 +47,8 @@ app = FastAPI(
     ),
 )
 
-@app.get("/healthz")
-@app.get("/")
-def healthz() -> dict[str, str]:
-    return {"status": "ok"}
-
 # In-memory session store keyed by session_id for multi-turn state (`last_ranked_candidates`, etc.)
 _SESSIONS: dict[str, dict[str, Any]] = {}
-
 
 
 class PlanRequest(BaseModel):
@@ -285,6 +279,7 @@ def _to_api_dict(resp: AgentApiResponse) -> dict[str, Any]:
 
 
 @app.get("/healthz")
+@app.get("/", include_in_schema=False)
 def healthz() -> dict[str, Any]:
     return {
         "status": "ok",
