@@ -42,7 +42,7 @@ export const AskTab: React.FC<AskTabProps> = ({
   };
 
   return (
-    <div className="max-w-7xl mx-auto w-full p-6 flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-6">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Chat Conversation, Agent Trace & Candidate List */}
         <div className="lg:col-span-5 flex flex-col gap-6">
@@ -57,7 +57,7 @@ export const AskTab: React.FC<AskTabProps> = ({
           </div>
 
           {/* AGENT TRACE Panel */}
-          <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-md space-y-3.5">
+          <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-md space-y-4">
             <div className="flex items-center justify-between pb-1">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
                 AGENT TRACE
@@ -71,9 +71,9 @@ export const AskTab: React.FC<AskTabProps> = ({
               </button>
             </div>
 
-            <div className="space-y-2.5 text-xs font-mono">
-              <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
-                <div className="flex items-center gap-2.5">
+            <div className="flex flex-col gap-1 text-xs font-mono">
+              <div className="flex items-center justify-between py-2 border-b border-slate-800/40">
+                <div className="flex items-center gap-3">
                   <div className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500/60 flex items-center justify-center text-emerald-400">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -83,8 +83,8 @@ export const AskTab: React.FC<AskTabProps> = ({
                 <span className="text-slate-500 text-[11px]">done</span>
               </div>
 
-              <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
-                <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-between py-2 border-b border-slate-800/40">
+                <div className="flex items-center gap-3">
                   <div className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500/60 flex items-center justify-center text-emerald-400">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -94,8 +94,8 @@ export const AskTab: React.FC<AskTabProps> = ({
                 <span className="text-slate-500 text-[11px]">done</span>
               </div>
 
-              <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
-                <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-between py-2 border-b border-slate-800/40">
+                <div className="flex items-center gap-3">
                   <div className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500/60 flex items-center justify-center text-emerald-400">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -105,8 +105,8 @@ export const AskTab: React.FC<AskTabProps> = ({
                 <span className="text-slate-500 text-[11px]">done</span>
               </div>
 
-              <div className="flex items-center justify-between py-1 border-b border-slate-800/40">
-                <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-between py-2 border-b border-slate-800/40">
+                <div className="flex items-center gap-3">
                   <div className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500/60 flex items-center justify-center text-emerald-400">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -116,8 +116,8 @@ export const AskTab: React.FC<AskTabProps> = ({
                 <span className="text-slate-500 text-[11px]">done</span>
               </div>
 
-              <div className="flex items-center justify-between py-1">
-                <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3">
                   <div className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500/60 flex items-center justify-center text-emerald-400">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -130,7 +130,7 @@ export const AskTab: React.FC<AskTabProps> = ({
           </div>
 
           {/* Heat Planner Agent Response Card */}
-          <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-lg flex flex-col gap-4">
+          <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-lg flex flex-col gap-6">
             <div>
               <h3 className="text-xs font-semibold text-slate-300 mb-1.5">
                 Heat Planner agent
@@ -141,14 +141,14 @@ export const AskTab: React.FC<AskTabProps> = ({
             </div>
 
             {/* Recommended Sites Cards */}
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-3.5">
               {sites.slice(0, centersToFund).map((site) => {
                 const isSelected = site.id === selectedSiteId;
                 return (
                   <div
                     key={site.id}
                     onClick={() => setSelectedSiteId(site.id)}
-                    className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
+                    className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
                       isSelected
                         ? "bg-[#162032] border-[#ea580c] shadow-md"
                         : "bg-[#090d16]/80 border-slate-800 hover:bg-[#121927]"
@@ -169,7 +169,7 @@ export const AskTab: React.FC<AskTabProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3.5 text-xs font-mono">
+                    <div className="flex items-center gap-4 text-xs font-mono">
                       <span className="font-bold text-orange-400">
                         +{site.offsetF.toFixed(1)}°F
                       </span>
@@ -187,16 +187,16 @@ export const AskTab: React.FC<AskTabProps> = ({
             </p>
 
             {/* Action Chips */}
-            <div className="flex items-center gap-3 pt-1">
+            <div className="flex items-center gap-4 pt-1">
               <button
                 onClick={onOpenCompareModal}
-                className="px-4 py-2 rounded-full border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs text-slate-200 font-medium transition-colors"
+                className="px-5 py-2.5 rounded-full border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs text-slate-200 font-medium transition-colors"
               >
                 Why not site 4?
               </button>
               <button
                 onClick={() => onNavigateTab("equity")}
-                className="px-4 py-2 rounded-full border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs text-slate-200 font-medium transition-colors"
+                className="px-5 py-2.5 rounded-full border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs text-slate-200 font-medium transition-colors"
               >
                 Run the equity audit
               </button>
@@ -205,30 +205,30 @@ export const AskTab: React.FC<AskTabProps> = ({
             {/* Primary Action Button */}
             <button
               onClick={() => onNavigateTab("proposal")}
-              className="w-full py-3 px-5 rounded-xl bg-[#ea580c] hover:bg-orange-600 text-white font-semibold text-xs tracking-wide transition-all shadow-md active:scale-[0.99]"
+              className="w-full py-3.5 px-6 rounded-xl bg-[#ea580c] hover:bg-orange-600 text-white font-semibold text-xs tracking-wide transition-all shadow-md active:scale-[0.99]"
             >
               Draft the council proposal
             </button>
           </div>
 
           {/* Bottom Chat Input Form */}
-          <div className="mt-auto space-y-2">
+          <div className="mt-auto flex flex-col gap-3">
             <label className="block text-xs font-semibold text-slate-400">
               Ask the planner
             </label>
-            <form onSubmit={handleSend} className="flex items-center gap-3">
+            <form onSubmit={handleSend} className="flex items-center gap-4">
               <input
                 type="text"
                 value={inputPrompt}
                 onChange={(e) => setInputPrompt(e.target.value)}
                 placeholder="e.g. What's near Peachtree and 10th?"
                 disabled={isLoadingMessage}
-                className="flex-1 bg-[#090d16] border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-orange-500"
+                className="flex-1 bg-[#090d16] border border-slate-800 rounded-xl px-4 py-3 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-orange-500"
               />
               <button
                 type="submit"
                 disabled={isLoadingMessage || !inputPrompt.trim()}
-                className="px-5 py-2.5 rounded-xl bg-[#ea580c] hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-semibold transition-colors shadow-sm"
+                className="px-6 py-3 rounded-xl bg-[#ea580c] hover:bg-orange-600 disabled:opacity-50 text-white text-xs font-semibold transition-colors shadow-sm"
               >
                 {isLoadingMessage ? "..." : "Send"}
               </button>
@@ -253,7 +253,7 @@ export const AskTab: React.FC<AskTabProps> = ({
           {selectedSite && (
             <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row gap-6 justify-between items-center">
               {/* Left: Site Info & Offset */}
-              <div className="flex flex-col justify-between self-stretch space-y-3">
+              <div className="flex flex-col justify-between self-stretch space-y-4">
                 <div className="flex items-center gap-3.5">
                   <div className="w-8 h-8 rounded-full bg-white text-slate-900 flex items-center justify-center text-xs font-bold shadow-sm">
                     {selectedSite.id}
@@ -284,18 +284,18 @@ export const AskTab: React.FC<AskTabProps> = ({
               </div>
 
               {/* Right: 4 Horizontal Driver Bars matching PDF Screen */}
-              <div className="flex-1 max-w-sm flex flex-col justify-center space-y-3 w-full">
+              <div className="flex-1 max-w-sm flex flex-col justify-center space-y-4 w-full">
                 {selectedSite.drivers.map((driver) => {
                   const isWarming = driver.attributionF >= 0;
                   const widthPct = Math.min(100, Math.max(15, Math.abs(driver.attributionF) * 38));
 
                   return (
-                    <div key={driver.feature} className="flex items-center justify-between gap-3 text-xs">
+                    <div key={driver.feature} className="flex items-center justify-between gap-4 text-xs">
                       <span className="w-32 text-slate-300 text-xs font-medium capitalize truncate">
                         {driver.feature.replace("_", " ")}
                       </span>
 
-                      <div className="flex-1 h-2.5 rounded-full bg-slate-800/80 overflow-hidden">
+                      <div className="flex-1 h-3 rounded-full bg-slate-800/80 overflow-hidden">
                         <div
                           className={`h-full rounded-full ${
                             isWarming ? "bg-[#ea580c]" : "bg-sky-500"

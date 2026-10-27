@@ -249,8 +249,8 @@ export default function Home() {
       {/* Top Navbar */}
       <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      {/* Main Content Body */}
-      <main className="flex-1 flex flex-col">
+      {/* Main Content Body - Centered cleanly with max-w-7xl, mx-auto, p-6 padding, and gap-6 spacing */}
+      <main className="flex-1 w-full max-w-7xl mx-auto p-6 flex flex-col gap-6">
         {activeTab === "ask" && (
           <AskTab
             sites={sites}

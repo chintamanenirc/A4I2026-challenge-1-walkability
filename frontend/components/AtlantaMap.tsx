@@ -73,7 +73,7 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
   return (
     <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl flex flex-col overflow-hidden shadow-xl">
       {/* Map Header */}
-      <div className="px-6 py-4 border-b border-slate-800/80 flex items-center justify-between bg-[#0a0f1a] gap-4">
+      <div className="p-6 border-b border-slate-800/80 flex items-center justify-between bg-[#0a0f1a] gap-6">
         <div>
           <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
             <span>Atlanta · predicted heat offset by tract</span>
@@ -305,16 +305,16 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
       </div>
 
       {/* Map Control Bar: Gradient & Centers to Fund */}
-      <div className="px-6 py-3.5 border-t border-slate-800/80 bg-[#0a0f1a] flex items-center justify-between text-xs gap-4">
+      <div className="p-6 border-t border-slate-800/80 bg-[#0a0f1a] flex items-center justify-between text-xs gap-6">
         {/* Gradient Legend */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <span className="text-slate-400 text-xs">Cooler</span>
           <div className="w-28 h-2.5 rounded-sm bg-gradient-to-r from-[#1a2638] via-[#ea580c] to-[#fed7aa] border border-slate-800"></div>
           <span className="text-slate-400 text-xs">Hotter than city average</span>
         </div>
 
         {/* Centers to fund interactive counter */}
-        <div className="flex items-center gap-2.5 bg-[#090d16] border border-slate-800 px-3.5 py-1.5 rounded-full shadow-sm">
+        <div className="flex items-center gap-2.5 bg-[#090d16] border border-slate-800 px-4 py-2 rounded-full shadow-sm">
           <span className="text-slate-300 text-xs font-medium">Centers to fund</span>
           <button
             onClick={() => setCentersToFund((prev) => Math.max(1, prev - 1))}

@@ -40,17 +40,17 @@ export const CompareModal: React.FC<CompareModalProps> = ({
           </button>
         </div>
 
-        {/* Comparison Grid */}
-        <div className="grid grid-cols-2 gap-4 text-xs">
+        {/* Comparison Grid with gap-6 and consistent p-6 */}
+        <div className="grid grid-cols-2 gap-6 text-xs">
           {/* Site A (Funded) */}
-          <div className="bg-slate-900/80 border border-orange-500/50 rounded-xl p-4 space-y-3">
+          <div className="bg-slate-900/80 border border-orange-500/50 rounded-xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-100 text-sm">{siteA.name}</span>
-              <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 font-bold text-[10px]">
+              <span className="px-2.5 py-1 rounded bg-emerald-950 text-emerald-400 font-bold text-[10px]">
                 FUNDED #1
               </span>
             </div>
-            <div className="space-y-1.5 font-mono text-slate-300">
+            <div className="space-y-2 font-mono text-slate-300">
               <div className="flex justify-between">
                 <span className="text-slate-400 font-sans">Offset:</span>
                 <span className="font-bold text-orange-400">+{siteA.offsetF.toFixed(1)}°F</span>
@@ -75,14 +75,14 @@ export const CompareModal: React.FC<CompareModalProps> = ({
           </div>
 
           {/* Site B (Site 4 - Bankhead) */}
-          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-3">
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-4">
             <div className="flex items-center justify-between">
               <span className="font-bold text-slate-100 text-sm">{siteB.name}</span>
-              <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-bold text-[10px]">
+              <span className="px-2.5 py-1 rounded bg-slate-800 text-slate-400 font-bold text-[10px]">
                 DISPLACED #4
               </span>
             </div>
-            <div className="space-y-1.5 font-mono text-slate-300">
+            <div className="space-y-2 font-mono text-slate-300">
               <div className="flex justify-between">
                 <span className="text-slate-400 font-sans">Offset:</span>
                 <span className="font-bold text-orange-400">+{siteB.offsetF.toFixed(1)}°F</span>
@@ -108,8 +108,8 @@ export const CompareModal: React.FC<CompareModalProps> = ({
         </div>
 
         {/* Why Displaced Callout */}
-        <div className="bg-amber-950/20 border border-amber-500/40 rounded-xl p-4 flex items-start gap-3 text-xs text-amber-200/90">
-          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+        <div className="bg-amber-950/20 border border-amber-500/40 rounded-xl p-6 flex items-start gap-4 text-xs text-amber-200/90">
+          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <p className="leading-relaxed">
             <span className="font-bold text-amber-300">Why site 4 was passed over:</span> While {siteB.name} experiences elevated temperatures (+{siteB.offsetF.toFixed(1)}°F), its demographic vulnerability is markedly lower (19.2% poverty vs. 32.1% in {siteA.name}). Furthermore, placing a center here would overlap within the 1-mile transit radius of existing higher-need cooling corridors.
           </p>
@@ -119,7 +119,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
         <div className="flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs shadow-md transition-colors"
+            className="px-6 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-semibold text-xs shadow-md transition-colors"
           >
             Understood · Close
           </button>

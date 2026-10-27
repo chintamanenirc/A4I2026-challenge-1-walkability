@@ -51,7 +51,7 @@ Recommended tracts average higher poverty and car-free households compared to th
   };
 
   return (
-    <div className="max-w-7xl mx-auto w-full p-6 flex flex-col gap-6">
+    <div className="w-full flex flex-col gap-6">
       {/* Top Notification & Action Bar matching PDF Screen */}
       <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex items-center gap-3 text-xs text-slate-300">
@@ -63,11 +63,11 @@ Recommended tracts average higher poverty and car-free households compared to th
           </span>
         </div>
 
-        <div className="flex items-center gap-3 self-end sm:self-auto">
+        <div className="flex items-center gap-4 self-end sm:self-auto">
           <button
             onClick={onRegenerate}
             disabled={isRegenerating}
-            className="px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 transition-colors"
+            className="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? "animate-spin" : ""}`} />
             <span>{isRegenerating ? "Updating..." : "Regenerate"}</span>
@@ -75,7 +75,7 @@ Recommended tracts average higher poverty and car-free households compared to th
 
           <button
             onClick={handleCopyText}
-            className="px-3.5 py-2 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 transition-colors"
+            className="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 transition-colors"
           >
             <Copy className="w-3.5 h-3.5" />
             <span>{copied ? "Copied!" : "Copy text"}</span>
@@ -83,7 +83,7 @@ Recommended tracts average higher poverty and car-free households compared to th
 
           <button
             onClick={handleExportPDF}
-            className="px-5 py-2 rounded-xl bg-[#ea580c] hover:bg-orange-600 text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all"
+            className="px-6 py-2.5 rounded-xl bg-[#ea580c] hover:bg-orange-600 text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all"
           >
             Export PDF
           </button>
@@ -243,14 +243,14 @@ Recommended tracts average higher poverty and car-free households compared to th
         {/* Right Column: Governance Audit Checklist & Human-in-the-Loop */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           {/* Card: Ready for council? */}
-          <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-xl space-y-4">
+          <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col gap-6">
             <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
               Ready for council?
             </h3>
 
-            <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
-                <div className="flex items-center gap-2.5 text-slate-300">
+            <div className="flex flex-col text-xs">
+              <div className="flex items-center justify-between py-2 border-b border-slate-800/60">
+                <div className="flex items-center gap-3 text-slate-300">
                   <div className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500/60 flex items-center justify-center text-emerald-400">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -259,8 +259,8 @@ Recommended tracts average higher poverty and car-free households compared to th
                 <span className="text-slate-500 text-[11px] font-mono">done</span>
               </div>
 
-              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
-                <div className="flex items-center gap-2.5 text-slate-300">
+              <div className="flex items-center justify-between py-2 border-b border-slate-800/60">
+                <div className="flex items-center gap-3 text-slate-300">
                   <div className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500/60 flex items-center justify-center text-emerald-400">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -269,8 +269,8 @@ Recommended tracts average higher poverty and car-free households compared to th
                 <span className="text-slate-500 text-[11px] font-mono">done</span>
               </div>
 
-              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
-                <div className="flex items-center gap-2.5 text-slate-300">
+              <div className="flex items-center justify-between py-2 border-b border-slate-800/60">
+                <div className="flex items-center gap-3 text-slate-300">
                   <div className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500/60 flex items-center justify-center text-emerald-400">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -279,8 +279,8 @@ Recommended tracts average higher poverty and car-free households compared to th
                 <span className="text-slate-500 text-[11px] font-mono">done</span>
               </div>
 
-              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
-                <div className="flex items-center gap-2.5 text-slate-300">
+              <div className="flex items-center justify-between py-2 border-b border-slate-800/60">
+                <div className="flex items-center gap-3 text-slate-300">
                   <div className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500/60 flex items-center justify-center text-emerald-400">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -289,8 +289,8 @@ Recommended tracts average higher poverty and car-free households compared to th
                 <span className="text-slate-500 text-[11px] font-mono">done</span>
               </div>
 
-              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
-                <div className="flex items-center gap-2.5 text-slate-300">
+              <div className="flex items-center justify-between py-2 border-b border-slate-800/60">
+                <div className="flex items-center gap-3 text-slate-300">
                   <div className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500/60 flex items-center justify-center text-emerald-400">
                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                   </div>
@@ -299,8 +299,8 @@ Recommended tracts average higher poverty and car-free households compared to th
                 <span className="text-slate-500 text-[11px] font-mono">done</span>
               </div>
 
-              <div className="flex items-center justify-between py-1">
-                <div className="flex items-center gap-2.5 text-slate-400">
+              <div className="flex items-center justify-between py-2">
+                <div className="flex items-center gap-3 text-slate-400">
                   <div className="w-4 h-4 rounded-full border border-slate-600 bg-slate-800/50 flex items-center justify-center" />
                   <span>Costs confirmed by finance</span>
                 </div>
@@ -310,7 +310,7 @@ Recommended tracts average higher poverty and car-free households compared to th
           </div>
 
           {/* Card: Human in the loop */}
-          <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-xl space-y-2.5">
+          <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col gap-3">
             <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
               Human in the loop
             </h3>

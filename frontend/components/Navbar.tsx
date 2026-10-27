@@ -21,7 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   return (
     <header className="border-b border-slate-800/80 bg-[#0c121e] sticky top-0 z-50 w-full shadow-sm">
       {/* Top Header Bar centered with consistent padding */}
-      <div className="max-w-7xl mx-auto w-full px-6 py-3.5 flex items-center justify-between gap-6">
+      <div className="max-w-7xl mx-auto w-full px-6 py-4 flex items-center justify-between gap-6">
         {/* Left: Branding & City Pill */}
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
