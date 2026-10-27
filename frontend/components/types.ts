@@ -2,6 +2,7 @@ export interface FeatureDriver {
   feature: string;
   label?: string;
   attributionF: number;
+  deltaF?: number;
   description?: string;
 }
 
