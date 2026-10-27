@@ -186,10 +186,20 @@ def _to_api_dict(resp: AgentApiResponse) -> dict[str, Any]:
 
         ea_dict = None
         if ea:
-            allowed_measures = {"median_income", "poverty_rate", "no_vehicle_rate", "share_65_plus"}
+            # Metric prefix mapping to AuditMeasureRow in ui_service/contracts/agent_api.py
+            metric_to_measure = {
+                "1_poverty_rate": "poverty_rate",
+                "2_no_vehicle_rate": "no_vehicle_rate",
+                "3_share_65_plus": "share_65_plus",
+                "4_median_income_usd": "median_income",
+                "poverty_rate": "poverty_rate",
+                "no_vehicle_rate": "no_vehicle_rate",
+                "share_65_plus": "share_65_plus",
+                "median_income": "median_income",
+            }
             measures = [
                 {
-                    "measure": m.metric,
+                    "measure": metric_to_measure[m.metric],
                     "sites_value": m.recommended_sites,
                     "city_value": m.city_overall,
                     "ratio": m.ratio_rec_to_city or (
@@ -197,13 +207,29 @@ def _to_api_dict(resp: AgentApiResponse) -> dict[str, Any]:
                     ),
                 }
                 for m in ea.metrics
-                if m.metric in allowed_measures
+                if m.metric in metric_to_measure
             ]
+
+            # Post-hoc racial composition check only; never a model or ranking input
+            racial_mapping = {
+                "7_posthoc_black_resident_share": "Black",
+                "8_posthoc_white_resident_share": "White",
+            }
+            racial_comp = [
+                {
+                    "group": racial_mapping[m.metric],
+                    "sites_share": m.recommended_sites,
+                    "city_share": m.city_overall,
+                }
+                for m in ea.metrics
+                if m.metric in racial_mapping
+            ]
+
             ea_dict = {
                 **ea.model_dump(mode="json"),
                 "measures": measures,
                 "verdict": ea.summary,
-                "racial_composition": [],
+                "racial_composition": racial_comp,
                 "provenance_ids": prov_ids,
             }
 
