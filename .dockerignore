@@ -4,6 +4,7 @@ data/
 notebooks/
 __pycache__/
 **/__pycache__/
+.venv/
 .adk/
 .agents/
 urban_heat_agent/
