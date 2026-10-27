@@ -44,6 +44,7 @@ frontend/**/.env*
 .adk/
 .agy/
 .gemini/
+prompts/
 scratch/
 tmp/
 *.log
