@@ -47,11 +47,6 @@ app = FastAPI(
     ),
 )
 
-@app.get("/healthz")
-@app.get("/")
-def healthz() -> dict[str, str]:
-    return {"status": "ok"}
-
 # In-memory session store keyed by session_id for multi-turn state (`last_ranked_candidates`, etc.)
 _SESSIONS: dict[str, dict[str, Any]] = {}
 
@@ -284,7 +279,28 @@ def _to_api_dict(resp: AgentApiResponse) -> dict[str, Any]:
     return out
 
 
+class AdkPart(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    text: str | None = None
+
+
+class AdkMessage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    role: str = "user"
+    parts: list[AdkPart] = Field(default_factory=list)
+
+
+class AdkRunRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    appName: str = "urban_heat_agent"
+    userId: str = "urban_planner"
+    sessionId: str = "default"
+    newMessage: AdkMessage | None = None
+    message: str | None = None
+
+
 @app.get("/healthz")
+@app.get("/")
 def healthz() -> dict[str, Any]:
     return {
         "status": "ok",
@@ -299,11 +315,76 @@ def healthz() -> dict[str, Any]:
     }
 
 
+@app.get("/list-apps")
+def list_apps() -> list[str]:
+    return ["urban_heat_agent", "heat_planner", "agent"]
+
+
+@app.post("/apps/{app_name}/users/{user_id}/sessions/{session_id}")
+def create_session(app_name: str, user_id: str, session_id: str) -> dict[str, Any]:
+    _SESSIONS.setdefault(session_id, {})
+    return {"id": session_id, "appName": app_name, "userId": user_id, "state": {}}
+
+
 @app.post("/api/v1/plan")
 def plan_endpoint(req: PlanRequest) -> dict[str, Any]:
     state = _SESSIONS.setdefault(req.session_id, {})
     resp = run_plan_turn(req.message, session_state=state)
     return _to_api_dict(resp)
+
+
+@app.post("/run")
+def adk_run_endpoint(req: AdkRunRequest) -> list[dict[str, Any]]:
+    msg_text = req.message or ""
+    if not msg_text and req.newMessage and req.newMessage.parts:
+        msg_text = " ".join(p.text for p in req.newMessage.parts if p.text).strip()
+    if not msg_text:
+        msg_text = "Recommend 3 cooling centers in Atlanta."
+
+    state = _SESSIONS.setdefault(req.sessionId, {})
+    resp = run_plan_turn(msg_text, session_state=state)
+    api_dict = _to_api_dict(resp)
+
+    events: list[dict[str, Any]] = []
+    call_parts: list[dict[str, Any]] = []
+    for prov in resp.data_result.provenance:
+        call_parts.append(
+            {
+                "functionCall": {
+                    "name": prov.tool_name,
+                    "args": prov.parameters,
+                }
+            }
+        )
+    if call_parts:
+        events.append({"author": req.appName, "content": {"role": "model", "parts": call_parts}})
+
+    events.append(
+        {
+            "author": req.appName,
+            "content": {
+                "role": "user",
+                "parts": [
+                    {
+                        "functionResponse": {
+                            "name": "assemble_placement_recommendation",
+                            "response": api_dict,
+                        }
+                    }
+                ],
+            },
+        }
+    )
+    events.append(
+        {
+            "author": req.appName,
+            "content": {
+                "role": "model",
+                "parts": [{"text": api_dict.get("narrative") or resp.narrative_markdown}],
+            },
+        }
+    )
+    return events
 
 
 def build_tract_layer(rows: list[dict[str, Any]]) -> dict[str, Any]:
