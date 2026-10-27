@@ -10,7 +10,12 @@ private, warm, pinned Toolbox).
 | `heat-planner-app` | The ADK agent **plus** the planner UI (`app/`): UI at `/planner/`, ADK dev UI at `/dev-ui/` |
 
 `heat-planner-app` is a separate name so it never overwrites the `heat-planner` service that
-`deploy_agent.sh` creates with `adk deploy`.
+`deploy_agent.sh` creates with `adk deploy`. It builds from `app/Dockerfile`; the root
+`Dockerfile` stays the agent lane's `adk api_server` image.
+
+The agent-side pieces (`select_cooling_center_sites`, loading the Toolbox from `TOOLBOX_URL`,
+ground rules, Google geocoding) are in the separate `p4-agent-changes` PR. Until it merges, the
+UI works but the agent doesn't use the Toolbox, and smoke-test steps 3 and 4 won't pass.
 
 ```bash
 export PROJECT_ID=$(gcloud config get-value project) REGION=us-central1
@@ -62,12 +67,18 @@ export TOOLBOX_URL=<printed by the script>
 `toolsets: heat-planner` in `toolbox/tools.yaml` is what the agent loads. `toolbox-sa` needs
 `roles/bigquery.dataViewer` on `a4i_semantic` and `a4i_core` (the semantic views read core).
 The agent authenticates to the private Toolbox with its own identity token
-(`CredentialStrategy.workload_identity` in `agent/agent.py`).
+(`CredentialStrategy.workload_identity` in `agent/agent.py`, from the `p4-agent-changes` PR).
 
 ## 4. Deploy the agent and UI
 
 ```bash
-gcloud run deploy heat-planner-app --source . --region $REGION \
+gcloud artifacts repositories describe heat-planner --location $REGION >/dev/null 2>&1 || \
+  gcloud artifacts repositories create heat-planner --repository-format docker \
+    --location $REGION --labels team=team,app=heat-planner,env=hackathon
+TAG=$(git rev-parse --short HEAD)
+gcloud builds submit --config app/cloudbuild.yaml --substitutions _REGION=$REGION,_TAG=$TAG .
+gcloud run deploy heat-planner-app \
+  --image $REGION-docker.pkg.dev/$PROJECT_ID/heat-planner/heat-planner-app:$TAG --region $REGION \
   --service-account heat-agent-sa@$PROJECT_ID.iam.gserviceaccount.com \
   --set-env-vars GOOGLE_CLOUD_PROJECT=$PROJECT_ID,TOOLBOX_URL=$TOOLBOX_URL \
   --set-secrets MAPS_BROWSER_KEY=maps-api-key:latest,GOOGLE_MAPS_API_KEY=maps-geocoding-key:latest \

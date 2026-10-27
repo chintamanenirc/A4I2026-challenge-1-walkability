@@ -7,8 +7,6 @@ import json
 from typing import Any, Dict, List, Optional
 from google.cloud import bigquery
 
-from .siting import spread_sites
-
 PROJECT_ID = os.getenv("GOOGLE_CLOUD_PROJECT", "qwiklabs-gcp-04-ec3596addc43")
 DATASET_ID = "a4i_climate"
 MODEL_ID = f"{PROJECT_ID}.{DATASET_ID}.heat_offset_model"
@@ -55,67 +53,51 @@ def build_google_maps_urls(latitude: float, longitude: float, label: Optional[st
     }
 
 
-GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")
-_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
-
-
-def _google_geocode(params: Dict[str, str]) -> Dict[str, Any]:
-    """Calls the Google Geocoding API. Raises RuntimeError on a non-OK status."""
-    if not GOOGLE_MAPS_API_KEY:
-        raise RuntimeError("GOOGLE_MAPS_API_KEY is not set")
-    url = _GEOCODE_URL + "?" + urllib.parse.urlencode({**params, "key": GOOGLE_MAPS_API_KEY})
-    with urllib.request.urlopen(url, timeout=5) as resp:
-        data = json.loads(resp.read().decode("utf-8"))
-    status = data.get("status")
-    if status == "ZERO_RESULTS":
-        return {"results": []}
-    if status != "OK":
-        raise RuntimeError(f"Geocoding status {status}: {data.get('error_message', '')}")
-    return data
-
-
-def _component(result: Dict[str, Any], *types: str) -> Optional[str]:
-    for t in types:
-        for comp in result.get("address_components", []):
-            if t in comp.get("types", []):
-                return comp.get("long_name")
-    return None
-
-
 def geocode_address(address_or_intersection: str) -> Dict[str, Any]:
-    """Geocodes a street name, address, intersection, or landmark to latitude and longitude.
+    """Geocodes a street name, address, or landmark to geographic coordinates (latitude, longitude).
 
-    Lets planners ask by street name (e.g. 'Peachtree St and 10th St, Atlanta')
-    instead of raw coordinates. Uses the Google Geocoding API.
+    Allows municipal planners to query by street name (e.g. '10th St NE, Atlanta' or 'Elm St, Dallas')
+    instead of requiring raw coordinates.
 
     Args:
         address_or_intersection: The human-readable address, intersection, or landmark name.
 
     Returns:
-        Dictionary containing latitude, longitude, formatted address, and Google Maps URLs.
+        Dictionary containing resolved latitude, longitude, formatted address, and Google Maps URLs.
     """
     try:
-        data = _google_geocode({"address": address_or_intersection, "region": "us"})
-        if not data["results"]:
+        q = urllib.parse.quote(address_or_intersection)
+        url = f"https://nominatim.openstreetmap.org/search?format=jsonv2&q={q}"
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "AgentsForImpact-UrbanHeatPlanner/1.0 (Climate Resilient Cities)"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+        if not data:
             return {
-                "error": f"Could not find '{address_or_intersection}'. Try a nearby cross street or add the city name."
+                "error": f"Could not find coordinates for '{address_or_intersection}'. Please provide a nearby major cross street or city name."
             }
-        hit = data["results"][0]
-        loc = hit["geometry"]["location"]
-        lat, lon = round(float(loc["lat"]), 4), round(float(loc["lng"]), 4)
+
+        first_hit = data[0]
+        lat = round(float(first_hit["lat"]), 4)
+        lon = round(float(first_hit["lon"]), 4)
+        maps_links = build_google_maps_urls(lat, lon, label=first_hit.get("display_name"))
+
         return {
             "query": address_or_intersection,
             "latitude": lat,
             "longitude": lon,
-            "resolved_name": hit.get("formatted_address"),
-            **build_google_maps_urls(lat, lon, label=hit.get("formatted_address")),
+            "resolved_name": first_hit.get("display_name"),
+            **maps_links
         }
     except Exception as e:
-        return {"error": f"Geocoding is unavailable ({e}). Ask the planner for coordinates or a census tract instead."}
+        return {"error": f"Geocoding service unavailable: {str(e)}"}
 
 
 def reverse_geocode_location(latitude: float, longitude: float) -> Dict[str, Any]:
-    """Resolves coordinates into a street, neighborhood, city, and Google Maps links.
+    """Resolves coordinates into human-readable street address, neighborhood, and Google Maps links.
 
     Args:
         latitude: Latitude coordinate.
@@ -124,29 +106,39 @@ def reverse_geocode_location(latitude: float, longitude: float) -> Dict[str, Any
     Returns:
         Dictionary containing street name, neighborhood, city, and Google Maps URLs.
     """
-    maps_links = build_google_maps_urls(latitude, longitude)
     try:
-        data = _google_geocode({"latlng": f"{latitude:.5f},{longitude:.5f}"})
-        if not data["results"]:
-            raise RuntimeError("no results")
-        hit = data["results"][0]
+        url = f"https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat={latitude:.4f}&lon={longitude:.4f}"
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "AgentsForImpact-UrbanHeatPlanner/1.0 (Climate Resilient Cities)"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+
+        addr = data.get("address", {})
+        street = addr.get("road") or addr.get("pedestrian") or "Unknown Street"
+        neighborhood = addr.get("neighbourhood") or addr.get("suburb") or addr.get("quarter") or "Urban Core"
+        city = addr.get("city") or addr.get("town") or addr.get("county") or "Metro Area"
+
+        maps_links = build_google_maps_urls(latitude, longitude, label=data.get("display_name"))
+
         return {
             "latitude": latitude,
             "longitude": longitude,
-            "street": _component(hit, "route") or "Unnamed street",
-            "neighborhood": _component(hit, "neighborhood", "sublocality", "sublocality_level_1") or "Unknown neighborhood",
-            "city": _component(hit, "locality", "administrative_area_level_2") or "Unknown city",
-            "full_address": hit.get("formatted_address"),
-            **build_google_maps_urls(latitude, longitude, label=hit.get("formatted_address")),
+            "street": street,
+            "neighborhood": neighborhood,
+            "city": city,
+            "full_address": data.get("display_name"),
+            **maps_links
         }
-    except Exception:
+    except Exception as e:
+        maps_links = build_google_maps_urls(latitude, longitude)
         return {
             "latitude": latitude,
             "longitude": longitude,
-            "street": None,
-            "neighborhood": None,
-            "note": "Street names unavailable; showing coordinates only.",
-            **maps_links,
+            "street": "Coordinates Centroid",
+            "neighborhood": "Urban District",
+            **maps_links
         }
 
 
@@ -421,9 +413,7 @@ def audit_equity(candidate_geo_ids: List[str]) -> Dict[str, Any]:
     if not candidate_geo_ids:
         return {"error": "Please provide at least one tract geo_id to audit."}
 
-    candidate_geo_ids = [str(g) for g in candidate_geo_ids if str(g).isdigit()]
-    if not candidate_geo_ids:
-        return {"error": "Tract IDs must be numeric Census GEOIDs."}
+    formatted_ids = ", ".join(f"'{gid}'" for gid in candidate_geo_ids)
 
     query = f"""
     WITH city_baseline AS (
@@ -445,17 +435,13 @@ def audit_equity(candidate_geo_ids: List[str]) -> Dict[str, Any]:
         SUM(total_pop) AS total_population_served,
         COUNT(*) AS num_recommended_tracts
       FROM `{PROJECT_ID}.{DATASET_ID}.tract_demographics`
-      WHERE geo_id IN UNNEST(@ids)
+      WHERE geo_id IN ({formatted_ids})
     )
     SELECT * FROM city_baseline CROSS JOIN recommended_sample
     """
 
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[bigquery.ArrayQueryParameter("ids", "STRING", candidate_geo_ids)]
-    )
-
     try:
-        results = bq_client.query(query, job_config=job_config).result()
+        results = bq_client.query(query).result()
         row = next(iter(results), None)
         if not row:
             return {"error": "Could not calculate equity audit metrics."}
@@ -501,26 +487,3 @@ def audit_equity(candidate_geo_ids: List[str]) -> Dict[str, Any]:
         }
     except Exception as e:
         return {"error": f"Failed to execute equity audit: {str(e)}"}
-
-
-def select_cooling_center_sites(count: int = 3, min_spacing_km: float = 2.0) -> Dict[str, Any]:
-    """Chooses `count` permanent cooling-center sites that do not overlap in reach.
-
-    Ranks tracts by predicted heat offset (BigQuery ML) combined with vulnerability
-    (no-car households, poverty, older residents), then walks down the ranking and
-    skips any site within `min_spacing_km` (straight-line) of a site already chosen,
-    so each new site reaches people the earlier ones missed. Also returns the
-    passed-over sites with the reason each was skipped.
-
-    Args:
-        count: Number of centers the budget can fund (1 to 5).
-        min_spacing_km: Minimum straight-line distance between chosen sites, in km.
-
-    Returns:
-        Dictionary with selected_sites (numbered), passed_over (with reasons), and notes.
-    """
-    count = min(max(1, int(count)), 5)
-    candidates = rank_candidate_sites(10)
-    if candidates and "error" in candidates[0]:
-        return {"error": candidates[0]["error"]}
-    return spread_sites(candidates, count, float(min_spacing_km))
