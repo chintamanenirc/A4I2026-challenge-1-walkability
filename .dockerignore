@@ -1,0 +1,7 @@
+.git
+**/__pycache__
+.adk
+notebooks
+*.parquet
+*.csv.gz
+.env
