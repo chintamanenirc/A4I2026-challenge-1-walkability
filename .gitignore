@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
+*.pyc
 .venv/
 venv/
 env/
@@ -14,10 +15,12 @@ env/
 service-account*.json
 credentials.json
 .env
+agent/**/.env
 
-# OS
+# OS & backups
 .DS_Store
 Thumbs.db
+*.bak
 
 # Local data
 *.parquet
