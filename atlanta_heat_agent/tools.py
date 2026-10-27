@@ -60,16 +60,20 @@ def explain_atlanta_heat_model_tracts(limit: int = 5) -> List[Dict[str, Any]]:
     SELECT
       p.census_tract_id,
       p.avg_predicted_offset_f,
-      ROUND(p.no_vehicle_rate * 100, 1) AS no_vehicle_rate_pct,
-      ROUND(p.poverty_rate * 100, 1) AS poverty_rate_pct,
-      p.median_age,
-      p.total_population,
+      ROUND(COALESCE(t.no_vehicle_rate, p.no_vehicle_rate) * 100, 1) AS no_vehicle_rate_pct,
+      ROUND(COALESCE(t.poverty_rate, p.poverty_rate) * 100, 1) AS poverty_rate_pct,
+      ROUND(COALESCE(t.share_65_plus, 0.145) * 100, 1) AS share_65_plus_pct,
+      COALESCE(t.median_income, 32000) AS median_income,
+      COALESCE(t.median_age, p.median_age) AS median_age,
+      COALESCE(t.population, p.total_population) AS total_population,
+      t.pop_65_plus,
+      t.car_free_households,
       p.primary_attribution.feature AS primary_feature,
       ROUND(p.primary_attribution.attribution, 2) AS primary_attribution_val,
-      t.tract_lat,
-      t.tract_lon
+      t.centroid_lat AS tract_lat,
+      t.centroid_lon AS tract_lon
     FROM preds p
-    LEFT JOIN `{PROJECT_ID}.a4i_climate.tract_demographics` t
+    LEFT JOIN `{PROJECT_ID}.a4i_semantic.dim_tract` t
       ON p.census_tract_id = t.geo_id
     ORDER BY
       p.avg_predicted_offset_f DESC
@@ -90,8 +94,12 @@ def explain_atlanta_heat_model_tracts(limit: int = 5) -> List[Dict[str, Any]]:
                 "avg_predicted_offset_f": row.avg_predicted_offset_f,
                 "no_vehicle_rate_pct": row.no_vehicle_rate_pct,
                 "poverty_rate_pct": row.poverty_rate_pct,
+                "share_65_plus_pct": row.share_65_plus_pct,
+                "median_income": int(row.median_income) if row.median_income else None,
                 "median_age": row.median_age,
                 "total_population": int(row.total_population) if row.total_population else None,
+                "pop_65_plus": int(row.pop_65_plus) if row.pop_65_plus else None,
+                "car_free_households": int(row.car_free_households) if row.car_free_households else None,
                 "primary_attribution": {
                     "feature": row.primary_feature,
                     "attribution": row.primary_attribution_val,
