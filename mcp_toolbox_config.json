@@ -1,0 +1,82 @@
+{
+  "server": {
+    "name": "urban-heat-mcp-toolbox",
+    "version": "1.0.0",
+    "description": "Model Context Protocol (MCP) Toolbox for BigQuery Urban Heat Analytics"
+  },
+  "sources": {
+    "bigquery_climate": {
+      "type": "bigquery",
+      "project": "qwiklabs-gcp-04-ec3596addc43",
+      "dataset": "a4i_climate",
+      "location": "us-central1"
+    }
+  },
+  "tools": [
+    {
+      "name": "predict_heat_offset",
+      "description": "Predicts microclimate heat offset (degrees F relative to city baseline) and feature attributions using BigQuery ML ML.EXPLAIN_PREDICT.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "description": "Latitude coordinate of target location"
+          },
+          "longitude": {
+            "type": "number",
+            "description": "Longitude coordinate of target location"
+          }
+        },
+        "required": ["latitude", "longitude"]
+      },
+      "statement": "SELECT predicted_temp_offset_f, top_feature_attributions FROM ML.EXPLAIN_PREDICT(MODEL `a4i_climate.heat_offset_model`, (SELECT {{latitude}} AS latitude, {{longitude}} AS longitude, ({{latitude}} - 32.7767) * 111.0 AS northing_km, ({{longitude}} - (-96.7970)) * 93.0 AS easting_km), STRUCT(3 AS top_k_features))"
+    },
+    {
+      "name": "rank_candidate_sites",
+      "description": "Ranks census tracts combining BigQuery ML predicted heat offset with demographic vulnerability indicators (poverty, no-car transit dependency, elderly population).",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "description": "Number of top vulnerable sites to return (max 10)",
+            "default": 5
+          }
+        }
+      },
+      "statement": "WITH candidates AS (SELECT d.geo_id, d.tract_lat AS latitude, d.tract_lon AS longitude, d.total_pop, d.median_age, d.median_income, d.poverty_rate, d.no_vehicle_rate, (d.tract_lat - 32.7767) * 111.0 AS northing_km, (d.tract_lon - (-96.7970)) * 93.0 AS easting_km FROM `a4i_climate.tract_demographics` d WHERE d.total_pop > 1000) SELECT geo_id, latitude, longitude, total_pop, poverty_rate, no_vehicle_rate, predicted_temp_offset_f, ROUND((predicted_temp_offset_f + 3.0) * 1.5 + (no_vehicle_rate * 100 * 0.4) + (poverty_rate * 100 * 0.3), 2) AS composite_vulnerability_score FROM ML.PREDICT(MODEL `a4i_climate.heat_offset_model`, (SELECT * FROM candidates)) ORDER BY composite_vulnerability_score DESC LIMIT {{limit}}"
+    },
+    {
+      "name": "analyze_heat_frequency",
+      "description": "Queries 7 years of NOAA GHCN daily weather station observations to calculate frequency of extreme heat days exceeding a temperature threshold.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "temp_threshold_f": {
+            "type": "number",
+            "description": "Fahrenheit temperature threshold (e.g. 95.0 or 100.0)",
+            "default": 100.0
+          }
+        }
+      },
+      "statement": "SELECT EXTRACT(YEAR FROM observation_date) AS year, COUNT(DISTINCT observation_date) AS days_recorded, COUNTIF(max_temp_f >= {{temp_threshold_f}}) AS days_above_threshold, ROUND(MAX(max_temp_f), 1) AS record_high_temp_f, ROUND(AVG(max_temp_f), 1) AS avg_summer_max_f FROM `a4i_climate.station_daily_temps` WHERE max_temp_f IS NOT NULL AND EXTRACT(MONTH FROM observation_date) IN (6, 7, 8, 9) GROUP BY year ORDER BY year ASC"
+    },
+    {
+      "name": "audit_equity",
+      "description": "Compares demographic indicators of recommended sites against citywide averages to perform an algorithmic equity audit.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "candidate_geo_ids": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "List of 11-digit Census tract GEOIDs"
+          }
+        },
+        "required": ["candidate_geo_ids"]
+      },
+      "statement": "WITH city_baseline AS (SELECT ROUND(AVG(median_income), 0) AS city_avg_income, ROUND(AVG(poverty_rate) * 100, 1) AS city_avg_poverty_pct, ROUND(AVG(no_vehicle_rate) * 100, 1) AS city_avg_no_vehicle_pct FROM `a4i_climate.tract_demographics` WHERE total_pop > 0), recommended_sample AS (SELECT ROUND(AVG(median_income), 0) AS rec_avg_income, ROUND(AVG(poverty_rate) * 100, 1) AS rec_avg_poverty_pct, ROUND(AVG(no_vehicle_rate) * 100, 1) AS rec_avg_no_vehicle_pct, SUM(total_pop) AS total_population_served FROM `a4i_climate.tract_demographics` WHERE geo_id IN UNNEST({{candidate_geo_ids}})) SELECT * FROM city_baseline CROSS JOIN recommended_sample"
+    }
+  ]
+}

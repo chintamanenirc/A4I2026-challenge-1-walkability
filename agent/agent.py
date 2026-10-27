@@ -2,6 +2,7 @@ from google.adk.agents.llm_agent import Agent
 from .tools import (
     predict_heat_offset,
     rank_candidate_sites,
+    rank_atlanta_heat_model_tracts,
     analyze_heat_frequency,
     audit_equity,
     geocode_address,
@@ -46,6 +47,7 @@ root_agent = Agent(
         reverse_geocode_location,
         predict_heat_offset,
         rank_candidate_sites,
+        rank_atlanta_heat_model_tracts,
         analyze_heat_frequency,
         audit_equity,
     ],

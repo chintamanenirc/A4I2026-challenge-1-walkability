@@ -487,3 +487,95 @@ def audit_equity(candidate_geo_ids: List[str]) -> Dict[str, Any]:
         }
     except Exception as e:
         return {"error": f"Failed to execute equity audit: {str(e)}"}
+
+
+def rank_atlanta_heat_model_tracts(limit: int = 5) -> List[Dict[str, Any]]:
+    """Evaluates and ranks Atlanta census tracts using the specialized BigQuery ML model `a4i_climate.atlanta_heat_model`.
+
+    Executes ML.EXPLAIN_PREDICT over `a4i_climate.atlanta_model_input` to compute average predicted offset (°F),
+    vulnerability metrics (no_vehicle_rate, poverty_rate, median_age, total_population), and primary feature attributions,
+    attaching Google Maps walking routes and coordinates.
+
+    Args:
+        limit: Number of top tracts to return (default: 5).
+
+    Returns:
+        List of ranked tracts with census_tract_id, avg_predicted_offset_f, demographic factors,
+        primary feature attribution, and Google Maps links.
+    """
+    max_limit = min(max(1, limit), 20)
+    query = f"""
+    WITH preds AS (
+      SELECT
+        census_tract_id,
+        ROUND(AVG(predicted_offset_f), 2) AS avg_predicted_offset_f,
+        ANY_VALUE(no_vehicle_rate) AS no_vehicle_rate,
+        ANY_VALUE(poverty_rate) AS poverty_rate,
+        ANY_VALUE(median_age) AS median_age,
+        ANY_VALUE(total_population) AS total_population,
+        ANY_VALUE(top_feature_attributions[SAFE_OFFSET(0)]) AS primary_attribution
+      FROM (
+        SELECT
+          census_tract_id,
+          no_vehicle_rate,
+          poverty_rate,
+          median_age,
+          total_population,
+          predicted_offset_f,
+          top_feature_attributions
+        FROM
+          ML.EXPLAIN_PREDICT(
+            MODEL `{PROJECT_ID}.a4i_climate.atlanta_heat_model`,
+            (SELECT * FROM `{PROJECT_ID}.a4i_climate.atlanta_model_input`),
+            STRUCT(3 AS top_k_features)
+          )
+      )
+      GROUP BY
+        census_tract_id
+    )
+    SELECT
+      p.census_tract_id,
+      p.avg_predicted_offset_f,
+      ROUND(p.no_vehicle_rate * 100, 1) AS no_vehicle_rate_pct,
+      ROUND(p.poverty_rate * 100, 1) AS poverty_rate_pct,
+      p.median_age,
+      p.total_population,
+      p.primary_attribution.feature AS primary_feature,
+      ROUND(p.primary_attribution.attribution, 2) AS primary_attribution_val,
+      t.tract_lat,
+      t.tract_lon
+    FROM preds p
+    LEFT JOIN `{PROJECT_ID}.a4i_climate.tract_demographics` t
+      ON p.census_tract_id = t.geo_id
+    ORDER BY
+      p.avg_predicted_offset_f DESC
+    LIMIT {max_limit};
+    """
+
+    try:
+        results = bq_client.query(query).result()
+        ranked = []
+        for rank, row in enumerate(results, 1):
+            lat = float(row.tract_lat) if row.tract_lat else 33.7490
+            lon = float(row.tract_lon) if row.tract_lon else -84.3880
+            maps_links = build_google_maps_urls(lat, lon, label=f"Atlanta Tract {row.census_tract_id}")
+            ranked.append({
+                "rank": rank,
+                "census_tract_id": row.census_tract_id,
+                "coordinates": {"latitude": round(lat, 4), "longitude": round(lon, 4)},
+                "avg_predicted_offset_f": row.avg_predicted_offset_f,
+                "no_vehicle_rate_pct": row.no_vehicle_rate_pct,
+                "poverty_rate_pct": row.poverty_rate_pct,
+                "median_age": row.median_age,
+                "total_population": int(row.total_population) if row.total_population else None,
+                "primary_attribution": {
+                    "feature": row.primary_feature,
+                    "attribution": row.primary_attribution_val,
+                    "interpretation": f"{row.primary_feature} contributed {row.primary_attribution_val:+.2f}°F to predicted offset"
+                },
+                "google_maps_link": maps_links["maps_view_url"],
+                "walking_directions_link": maps_links["maps_walking_directions_url"],
+            })
+        return ranked
+    except Exception as e:
+        return [{"error": f"Failed to query atlanta_heat_model: {str(e)}"}]
