@@ -9,7 +9,7 @@
 | **GCP Project** | `qwiklabs-gcp-04-ec3596addc43` |
 | **BigQuery Location** | `US` (multi-region) |
 | **Git Branch** | `data` |
-| **Current Stage** | Stage 0 (Profile), Stage 1 (`a4i_core`), and Stage 2 (`a4i_semantic`) complete and verified in BigQuery. Stage 3 (`sql/tests/`) and Stage 4 (`a4i_ml`) next. |
+| **Current Stage** | Stage 0 (Profile), Stage 1 (`a4i_core`), Stage 2 (`a4i_semantic`), and Stage 4 (`a4i_ml` + `sql/serve/` + `sql/audit/`) complete and verified in BigQuery. |
 
 ---
 
@@ -22,7 +22,7 @@
 | **Raw** | `a4i_climate` | Raw loaded tables (`heat_observations`, `station_daily_temps`, `tract_demographics`). Never modified. | Verified (`23,386` / `17,452` / `353` rows) |
 | **Core** | `a4i_core` | Cleaned, typed, sentinel-free tables with 100% column descriptions and reversible quality flags. | Deployed & verified |
 | **Semantic** | `a4i_semantic` | Business-named, documented views and TVFs for the ADK agent, MCP Toolbox, equity audit, and pitch deck. | Deployed & verified |
-| **ML** | `a4i_ml` | `tracts_enriched`, `campaign_footprint`, `point_features()` reading from `a4i_core` / `a4i_semantic`. | Stage 4 (pending) |
+| **ML** | `a4i_ml` | `tracts_enriched`, `campaign_footprint`, `point_features()`, `train_cells`, `offset_model_v1`, `grid_predictions`. | Deployed & verified |
 | **Extra** | `a4i_extra` | Optional license-checked Atlanta external layers (cooling centers, impervious/canopy). | Optional after Stage 4 |
 
 ---

@@ -21,3 +21,17 @@
 | `a4i_semantic.site_hot_days(offset_f)` | TVF (`1` row) | Table-valued function returning mean annual days (`2019–2025`) where `city_max_temp_f >= 95 - offset_f` compared against the city baseline (`23.9` days/yr). | Translates a site's predicted `+offset_f` into council-ready frequency (e.g., `+3.5 °F` offset = `56.0` days/yr of `95 °F`-equivalent heat vs. `23.9` city-wide). |
 | `a4i_semantic.vulnerable_population(lat, lon, radius_m)` | TVF (`1` row) | Table-valued function summing `car_free_households`, `pop_65_plus`, and `population` for tracts whose centroid lies within `radius_m` meters of `(lat, lon)`. | Ranks candidate cooling-center locations by how many seniors (`65+`) and car-free households live within walking/service radius. |
 | `a4i_semantic.audit_city_baseline` | View (`1` row) | Population-weighted city baseline across `350` populated tracts (`$75,714` median income, `13.95%` poverty, `8.23%` no-vehicle, `12.47%` age `65+`, `37.02` median age). | Provides the sentinel-free city denominator for `run_equity_audit` to verify recommended sites reach higher-need neighborhoods than the city average. |
+
+---
+
+## Stage 4: ML & Serving Layer (`a4i_ml`)
+
+| Object (`a4i_ml.*`) | Type & Rows | Description | How It Can Be Used (1-Line) |
+|---|---|---|---|
+| `a4i_ml.tracts_enriched` | Table (`353` rows) | Sentinel-cleaned Atlanta tracts joined with TIGER land/water geometry and ACS 2020 `pop_65_plus`; zero race columns. | Supplies neighborhood physical proxies and post-prediction vulnerability columns for `point_features()` and `grid_predictions`. |
+| `a4i_ml.campaign_footprint` | Table (`1` row) | Campaign centroid (`33.7572, -84.3833`), mean temperature (`82.062 °F`), bounding box, and convex hull buffered by `1.5 km`. | Bounds the ~250 m candidate grid (`5,618` points) to prevent out-of-hull geographic extrapolation. |
+| `a4i_ml.point_features(pts)` | TVF | Computes physical/built-environment features (`pop_density_km2`, `housing_density_km2`, `water_share`, `median_year_built`, `pop_within_1500m`, `housing_within_1500m`, `km_from_center`, `lat_centered`, `lon_centered`) for any `(point_id, lat, lon)` table. | Shared feature extractor guaranteeing train/serve parity between `train_cells`, `grid_predictions`, and on-demand `ML.EXPLAIN_PREDICT`. |
+| `a4i_ml.train_cells` | Table (`1,862` rows) | `geohash-7` cells (`n_readings >= 3`) from `a4i_semantic.fact_heat_cell` joined with `a4i_ml.point_features` and a `geohash-5` (~5 km × 5 km) spatial-block holdout split (`is_eval`: `1,378` train / `484` eval across `22` blocks). | Training and spatial-block evaluation table for `a4i_ml.offset_model_v1`. |
+| `a4i_ml.offset_model_v1` | BQML Model (`LINEAR_REG`) | Predicts `offset_f` (°F above/below the `82.06 °F` campaign mean) from physical/built-environment features (`enable_global_explain = TRUE`, `l2_reg = 0.1`); beats predict-zero baseline on held-out spatial blocks (`MAE = 1.254 °F` vs. `1.355 °F`, `-7.5%`). | Powers `ML.EXPLAIN_PREDICT` (`sql/serve/explain_point.sql`) and `ML.GLOBAL_EXPLAIN` for the agent and candidate grid scoring. |
+| `a4i_ml.grid_predictions` | Table (`5,618` rows) | ~250 m candidate grid inside `campaign_footprint` (`4,502` unmeasured + `1,116` measured points across `100` tracts) scored with `ML.EXPLAIN_PREDICT` (`predicted_offset_f`, `top_feature_attributions`) and joined with tract vulnerability metrics. | Pre-computed serving table for `sql/serve/rank_sites.sql` to rank and select non-overlapping permanent walkable cooling-center sites. |
+
