@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { SiteData } from "./types";
-import { Plus, Minus, Map as MapIcon, Layers } from "lucide-react";
+import { Plus, Minus, Map as MapIcon } from "lucide-react";
 
 interface AtlantaMapProps {
   sites: SiteData[];
@@ -26,78 +26,56 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
   const [zoomLevel, setZoomLevel] = useState(1);
   const [viewMode, setViewMode] = useState<"choropleth" | "googlemaps">("choropleth");
 
-  // Selected site for dashed ring & focus
   const activeSite = sites.find((s) => s.id === selectedSiteId) || sites[0];
 
-  // Map coordinates to SVG viewport (Atlanta bounding box approx 33.65 - 33.85, -84.50 - -84.30)
-  const mapWidth = 600;
-  const mapHeight = 440;
+  // Stylized polygonal tracts matching PDF image 1
+  const mapPolygons = [
+    // Top-left / Northwest cooler tracts
+    { id: "p1", points: "60,40 180,40 170,120 70,110", fill: "#1a2638" },
+    { id: "p2", points: "180,40 300,40 280,115 170,120", fill: "#162030" },
+    { id: "p3", points: "300,40 430,40 410,120 280,115", fill: "#1d2b3f" },
+    { id: "p4", points: "430,40 540,40 530,120 410,120", fill: "#172233" },
 
-  const latToY = (lat: number) => {
-    // 33.85 top -> 0, 33.65 bottom -> mapHeight
-    return ((33.86 - lat) / (33.86 - 33.64)) * mapHeight;
-  };
+    // Middle-North warm tracts
+    { id: "p5", points: "70,110 170,120 180,185 80,180", fill: "#c2410c" },
+    { id: "p6", points: "170,120 280,115 290,180 180,185", fill: "#ea580c" },
+    { id: "p7", points: "280,115 410,120 405,185 290,180", fill: "#f97316" },
+    { id: "p8", points: "410,120 530,120 520,185 405,185", fill: "#c2410c" },
 
-  const lonToX = (lon: number) => {
-    // -84.52 left -> 0, -84.28 right -> mapWidth
-    return ((lon - (-84.52)) / (-84.28 - (-84.52))) * mapWidth;
-  };
+    // Core Center / Site 1 area (Hotter peach/orange tracts)
+    { id: "p9", points: "180,185 290,180 300,245 190,250", fill: "#fed7aa" }, // Hot Site 1 zone (peach)
+    { id: "p10", points: "290,180 405,185 400,245 300,245", fill: "#f97316" },
+    { id: "p11", points: "405,185 520,185 510,245 400,245", fill: "#ea580c" },
+    { id: "p12", points: "80,180 180,185 190,250 90,245", fill: "#ea580c" },
 
-  // Predefined stylized Atlanta tracts polygon paths
-  const tracts = [
-    // Downtown / Midtown / Core
-    { id: "t1", d: "M 280,180 L 320,175 L 340,210 L 310,230 L 275,210 Z", offset: 3.4, noCar: 22, age65: 14 },
-    { id: "t2", d: "M 320,175 L 370,170 L 390,210 L 340,210 Z", offset: 2.8, noCar: 18, age65: 12 },
-    { id: "t3", d: "M 240,190 L 280,180 L 275,210 L 230,225 Z", offset: 3.8, noCar: 26, age65: 15 },
-    // South Atlanta / Thomasville / Peoplestown (Hotter cluster)
-    { id: "t4", d: "M 310,230 L 360,225 L 390,265 L 340,285 L 295,260 Z", offset: 4.1, noCar: 28, age65: 18 }, // Site 1 area
-    { id: "t5", d: "M 260,230 L 310,230 L 295,260 L 245,265 Z", offset: 3.7, noCar: 25, age65: 16 }, // Site 2 area
-    { id: "t6", d: "M 215,230 L 260,230 L 245,265 L 205,260 Z", offset: 3.2, noCar: 29, age65: 15 }, // Site 3 area
-    { id: "t7", d: "M 340,285 L 390,265 L 430,310 L 370,335 Z", offset: 4.3, noCar: 24, age65: 17 }, // High heat south
-    { id: "t8", d: "M 275,290 L 340,285 L 370,335 L 310,350 L 250,330 Z", offset: 3.9, noCar: 23, age65: 19 },
-    // Westside / Bankhead (Site 4 area)
-    { id: "t9", d: "M 160,190 L 230,190 L 215,230 L 140,225 Z", offset: 3.0, noCar: 20, age65: 13 }, // Site 4
-    { id: "t10", d: "M 120,230 L 205,230 L 195,270 L 110,260 Z", offset: 3.1, noCar: 21, age65: 14 },
-    { id: "t11", d: "M 170,270 L 245,265 L 230,320 L 160,310 Z", offset: 2.9, noCar: 19, age65: 15 },
-    // North / Buckhead (Cooler)
-    { id: "t12", d: "M 260,110 L 330,100 L 350,150 L 280,155 Z", offset: 1.2, noCar: 6, age65: 22 },
-    { id: "t13", d: "M 330,100 L 400,95 L 420,145 L 350,150 Z", offset: 1.0, noCar: 5, age65: 24 },
-    { id: "t14", d: "M 200,120 L 260,110 L 280,155 L 215,160 Z", offset: 1.6, noCar: 8, age65: 19 },
-    // East Atlanta / Decatur fringe
-    { id: "t15", d: "M 390,210 L 450,200 L 480,250 L 415,260 Z", offset: 2.2, noCar: 12, age65: 14 },
-    { id: "t16", d: "M 415,260 L 480,250 L 505,300 L 440,310 Z", offset: 2.5, noCar: 14, age65: 16 },
-    // South / Airport Fringe (Site 5 area)
-    { id: "t17", d: "M 220,330 L 290,325 L 310,380 L 230,390 Z", offset: 2.8, noCar: 21, age65: 16 }, // Site 5
-    { id: "t18", d: "M 290,325 L 360,320 L 380,385 L 310,380 Z", offset: 3.6, noCar: 22, age65: 17 },
+    // East side / Site 4 area (Vivid orange tract)
+    { id: "p13", points: "400,245 510,245 500,310 395,310", fill: "#f97316" }, // Site 4 zone
+    { id: "p14", points: "300,245 400,245 395,310 295,310", fill: "#fed7aa" }, // Site 2 zone (peach)
+    { id: "p15", points: "190,250 300,245 295,310 185,310", fill: "#ea580c" },
+    { id: "p16", points: "90,245 190,250 185,310 85,310", fill: "#c2410c" },
+
+    // South Core / Site 3 and Site 5 zones
+    { id: "p17", points: "85,310 185,310 180,380 75,375", fill: "#ea580c" }, // Site 5 area
+    { id: "p18", points: "185,310 295,310 290,380 180,380", fill: "#fed7aa" }, // Site 3 zone
+    { id: "p19", points: "295,310 395,310 390,380 290,380", fill: "#ea580c" },
+    { id: "p20", points: "395,310 500,310 490,380 390,380", fill: "#c2410c" },
   ];
 
-  // Helper color function based on active layer
-  const getTractFill = (t: typeof tracts[0]) => {
-    if (activeLayer === "heat") {
-      if (t.offset >= 4.0) return "#ea580c"; // Deep hot orange
-      if (t.offset >= 3.4) return "#f97316"; // Vivid orange
-      if (t.offset >= 2.8) return "#fb923c"; // Medium amber
-      if (t.offset >= 2.0) return "#fdba74"; // Light amber
-      return "#334155"; // Cooler slate
-    } else if (activeLayer === "nocar") {
-      if (t.noCar >= 25) return "#ea580c";
-      if (t.noCar >= 20) return "#f97316";
-      if (t.noCar >= 15) return "#fb923c";
-      return "#1e293b";
-    } else {
-      // Age 65+
-      if (t.age65 >= 20) return "#7c3aed";
-      if (t.age65 >= 16) return "#a855f7";
-      return "#1e293b";
-    }
+  // Specific marker coordinates matching PDF screen
+  const pinPositions: Record<number, { x: number; y: number }> = {
+    1: { x: 245, y: 215 }, // Site 1 (Inside light peach polygon)
+    2: { x: 350, y: 280 }, // Site 2 (Southeast of center)
+    3: { x: 295, y: 345 }, // Site 3 (South)
+    4: { x: 445, y: 245 }, // Site 4 (East)
+    5: { x: 135, y: 345 }, // Site 5 (Southwest)
   };
 
   return (
-    <div className="bg-[#0d131f] border border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-xl">
+    <div className="bg-[#0c121e] border border-slate-800/80 rounded-2xl flex flex-col overflow-hidden shadow-xl">
       {/* Map Header */}
-      <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-[#0b101b]">
+      <div className="px-5 py-3 border-b border-slate-800/80 flex items-center justify-between bg-[#0a0f1a]">
         <div>
-          <h2 className="text-sm font-semibold text-slate-100 flex items-center gap-2">
+          <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
             <span>Atlanta · predicted heat offset by tract</span>
           </h2>
           <p className="text-[11px] text-slate-400 mt-0.5">
@@ -107,12 +85,12 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
 
         {/* Layer Toggles & Mode Switch */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 p-0.5 rounded-full text-xs">
+          <div className="flex items-center gap-1 bg-[#090d16] border border-slate-800 p-0.5 rounded-full text-xs">
             <button
               onClick={() => setActiveLayer("heat")}
-              className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
+              className={`px-3 py-1 rounded-full text-[11px] font-semibold transition-colors ${
                 activeLayer === "heat"
-                  ? "bg-orange-500 text-white shadow-sm"
+                  ? "bg-[#ea580c] text-white shadow-sm"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -122,7 +100,7 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
               onClick={() => setActiveLayer("nocar")}
               className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
                 activeLayer === "nocar"
-                  ? "bg-orange-500 text-white shadow-sm"
+                  ? "bg-[#ea580c] text-white shadow-sm"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -132,7 +110,7 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
               onClick={() => setActiveLayer("age65")}
               className={`px-3 py-1 rounded-full text-[11px] font-medium transition-colors ${
                 activeLayer === "age65"
-                  ? "bg-purple-600 text-white shadow-sm"
+                  ? "bg-[#ea580c] text-white shadow-sm"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
@@ -155,156 +133,146 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
         </div>
       </div>
 
-      {/* Map Viewport */}
-      <div className="relative w-full h-[380px] bg-[#070b12] overflow-hidden select-none">
+      {/* Map Canvas Viewport */}
+      <div className="relative w-full h-[400px] bg-[#090e18] overflow-hidden select-none">
         {viewMode === "choropleth" ? (
           <svg
-            viewBox={`0 0 ${mapWidth} ${mapHeight}`}
+            viewBox="0 0 600 420"
             className="w-full h-full transition-transform duration-200"
             style={{ transform: `scale(${zoomLevel})` }}
           >
-            <defs>
-              {/* Pattern for background water or texture */}
-              <linearGradient id="waterGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#0f172a" />
-                <stop offset="1%" stopColor="#0284c7" stopOpacity="0.4" />
-              </linearGradient>
-            </defs>
-
-            {/* Chattahoochee River */}
-            <path
-              d="M 50,40 Q 120,90 140,160 T 90,270 T 40,400"
-              fill="none"
-              stroke="#0284c7"
-              strokeWidth="4"
-              strokeOpacity="0.5"
-            />
-            <text x="75" y="110" fill="#38bdf8" fontSize="10" fontStyle="italic" opacity="0.7">
-              Chattahoochee R.
-            </text>
-
-            {/* I-285 Outer Perimeter Loop */}
-            <ellipse
-              cx="300"
-              cy="220"
-              rx="240"
-              ry="180"
-              fill="none"
-              stroke="#334155"
-              strokeWidth="2.5"
-              strokeDasharray="6 4"
-              opacity="0.6"
-            />
-            <text x="520" y="120" fill="#64748b" fontSize="10" fontWeight="bold">
-              I-285
-            </text>
-
-            {/* I-20 Highway (East - West) */}
-            <path
-              d="M 60,235 L 540,235"
-              fill="none"
-              stroke="#475569"
-              strokeWidth="2"
-              opacity="0.7"
-            />
-            <text x="80" y="230" fill="#64748b" fontSize="10" fontWeight="bold">
-              I-20
-            </text>
-
-            {/* I-75 / I-85 Downtown Connector (North - South) */}
-            <path
-              d="M 260,50 L 300,160 L 305,250 L 330,420"
-              fill="none"
-              stroke="#475569"
-              strokeWidth="2.5"
-              opacity="0.7"
-            />
-            <text x="395" y="70" fill="#64748b" fontSize="10" fontWeight="bold">
-              I-75/85
-            </text>
-
             {/* Census Tract Polygons */}
-            <g className="cursor-pointer">
-              {tracts.map((t) => (
-                <path
-                  key={t.id}
-                  d={t.d}
-                  fill={getTractFill(t)}
-                  stroke="#0f172a"
-                  strokeWidth="1.5"
-                  className="transition-all duration-200 hover:opacity-90 hover:stroke-amber-300"
+            <g>
+              {mapPolygons.map((poly) => (
+                <polygon
+                  key={poly.id}
+                  points={poly.points}
+                  fill={poly.fill}
+                  stroke="#0a0f1a"
+                  strokeWidth="2.5"
+                  className="cursor-pointer transition-opacity hover:opacity-90"
                 />
               ))}
             </g>
 
-            {/* Downtown Label */}
-            <g>
-              <circle cx="300" cy="200" r="3" fill="#f59e0b" />
-              <text x="308" y="204" fill="#fbbf24" fontSize="10" fontWeight="600" opacity="0.9">
-                Downtown
-              </text>
-            </g>
+            {/* Chattahoochee River line & text */}
+            <path
+              d="M 40,40 Q 110,80 130,150 T 80,260 T 30,390"
+              fill="none"
+              stroke="#0284c7"
+              strokeWidth="3.5"
+              strokeOpacity="0.6"
+            />
+            <text x="60" y="95" fill="#67e8f9" fontSize="10" fontWeight="500" opacity="0.8">
+              Chattahoochee R.
+            </text>
 
-            {/* Dashed Buffer Ring for Selected Site */}
-            {activeSite && (
-              <circle
-                cx={lonToX(activeSite.lon)}
-                cy={latToY(activeSite.lat)}
-                r="42"
-                fill="none"
-                stroke="#ea580c"
-                strokeWidth="1.5"
-                strokeDasharray="4 3"
-                className="animate-pulse"
-              />
-            )}
+            {/* I-285 Highway (outer boundary loop) */}
+            <path
+              d="M 50,210 Q 50,45 290,45 T 530,210 T 290,395 T 50,210"
+              fill="none"
+              stroke="#475569"
+              strokeWidth="1.8"
+              strokeDasharray="6 4"
+              opacity="0.7"
+            />
+            <text x="480" y="115" fill="#94a3b8" fontSize="9" fontWeight="bold">
+              I-285
+            </text>
 
-            {/* Numbered Pins (1 to 5) */}
-            {sites.map((site) => {
-              const cx = lonToX(site.lon);
-              const cy = latToY(site.lat);
-              const isSelected = site.id === selectedSiteId;
-              const isFunded = site.id <= centersToFund;
+            {/* I-20 Highway (horizontal line across map) */}
+            <line
+              x1="40"
+              y1="215"
+              x2="550"
+              y2="215"
+              stroke="#64748b"
+              strokeWidth="1.8"
+              opacity="0.75"
+            />
+            <text x="65" y="210" fill="#94a3b8" fontSize="9" fontWeight="bold">
+              I-20
+            </text>
+
+            {/* I-75/85 Connector (vertical diagonal line) */}
+            <line
+              x1="240"
+              y1="40"
+              x2="340"
+              y2="390"
+              stroke="#64748b"
+              strokeWidth="2"
+              opacity="0.75"
+            />
+            <text x="365" y="60" fill="#94a3b8" fontSize="9" fontWeight="bold">
+              I-75/85
+            </text>
+
+            {/* Downtown Label & Dot */}
+            <circle cx="285" cy="210" r="3" fill="#fbbf24" />
+            <text x="293" y="213" fill="#fde68a" fontSize="9" fontWeight="600" opacity="0.9">
+              Downtown
+            </text>
+
+            {/* Dashed Buffer Ring around Site 1 */}
+            <circle
+              cx={pinPositions[1].x}
+              cy={pinPositions[1].y}
+              r="40"
+              fill="none"
+              stroke="#0a0f1a"
+              strokeWidth="2"
+              strokeDasharray="4 3"
+            />
+
+            {/* Numbered Pins (1, 2, 3, 4, 5) */}
+            {[1, 2, 3, 4, 5].map((id) => {
+              const pos = pinPositions[id];
+              const isSelected = id === selectedSiteId;
+              const isSite4 = id === 4;
 
               return (
                 <g
-                  key={site.id}
-                  onClick={() => onSelectSite(site.id)}
+                  key={id}
+                  onClick={() => onSelectSite(id)}
                   className="cursor-pointer transition-transform hover:scale-110"
                 >
-                  {/* Pin outer aura if selected */}
-                  {isSelected && (
-                    <circle cx={cx} cy={cy} r="16" fill="#ea580c" fillOpacity="0.3" />
-                  )}
-
-                  {/* Pin circular body */}
+                  {/* Pin outer circle */}
                   <circle
-                    cx={cx}
-                    cy={cy}
-                    r={isSelected ? 11 : 9}
-                    fill={isFunded ? (isSelected ? "#ea580c" : "#ffffff") : "#334155"}
-                    stroke={isSelected ? "#ffffff" : "#1e293b"}
+                    cx={pos.x}
+                    cy={pos.y}
+                    r={isSelected ? 11 : 9.5}
+                    fill={isSite4 ? "#1e293b" : "#ffffff"}
+                    stroke="#090d16"
                     strokeWidth="2"
-                    className="drop-shadow-lg"
+                    strokeDasharray={isSite4 ? "3 2" : undefined}
+                    className="drop-shadow-md"
                   />
 
-                  {/* Pin Number */}
+                  {/* Pin inner text */}
                   <text
-                    x={cx}
-                    y={cy + 3.5}
+                    x={pos.x}
+                    y={pos.y + 3.5}
                     textAnchor="middle"
-                    fill={isFunded ? (isSelected ? "#ffffff" : "#0f172a") : "#94a3b8"}
-                    fontSize={isSelected ? "11" : "9"}
+                    fill={isSite4 ? "#cbd5e1" : "#090d16"}
+                    fontSize={isSelected ? "11" : "9.5"}
                     fontWeight="bold"
                   >
-                    {site.id}
+                    {id}
                   </text>
                 </g>
               );
             })}
+
+            {/* Internal Annotation Footnotes at Bottom of Map Frame */}
+            <text x="20" y="405" fill="#94a3b8" fontSize="9" fontWeight="medium">
+              Dashed ring = straight-line reach
+            </text>
+            <text x="380" y="405" fill="#64748b" fontSize="8.5">
+              Base map: Google Maps (in build) · Tracts: Census TIGER/Line
+            </text>
           </svg>
         ) : (
-          /* Live Google Maps Embed View */
           <div className="w-full h-full relative">
             <iframe
               title="Atlanta Live Google Maps"
@@ -315,20 +283,17 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
               allowFullScreen
               src={`https://www.google.com/maps?q=${activeSite.lat},${activeSite.lon}&z=13&output=embed`}
             />
-            <div className="absolute top-3 left-3 bg-slate-900/90 border border-slate-700/80 px-2.5 py-1 rounded-md text-[11px] text-slate-300 pointer-events-none">
-              Google Maps Live Sync · {activeSite.name} ({activeSite.lat}, {activeSite.lon})
-            </div>
           </div>
         )}
 
         {/* Zoom Controls */}
         <div className="absolute top-4 right-4 flex flex-col gap-1 bg-slate-900/90 border border-slate-800 rounded-lg p-0.5 shadow-md">
           <button
-            onClick={() => setZoomLevel((z) => Math.min(1.6, z + 0.15))}
+            onClick={() => setZoomLevel((z) => Math.min(1.5, z + 0.15))}
             className="p-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
             title="Zoom in"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
           </button>
           <div className="h-px bg-slate-800 mx-1"></div>
           <button
@@ -336,22 +301,22 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
             className="p-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded transition-colors"
             title="Zoom out"
           >
-            <Minus className="w-4 h-4" />
+            <Minus className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Map Footer Bar: Legend & Centers To Fund Counter */}
-      <div className="px-5 py-3 border-t border-slate-800 bg-[#0b101b] flex items-center justify-between text-xs">
+      {/* Map Control Bar: Gradient & Centers to Fund */}
+      <div className="px-5 py-2.5 border-t border-slate-800/80 bg-[#0a0f1a] flex items-center justify-between text-xs">
         {/* Gradient Legend */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <span className="text-slate-400 text-[11px]">Cooler</span>
-          <div className="w-24 h-2.5 rounded-full bg-gradient-to-r from-slate-600 via-amber-500 to-orange-600 border border-slate-700"></div>
+          <div className="w-24 h-2.5 rounded-sm bg-gradient-to-r from-[#1a2638] via-[#ea580c] to-[#fed7aa] border border-slate-800"></div>
           <span className="text-slate-400 text-[11px]">Hotter than city average</span>
         </div>
 
         {/* Centers to fund interactive counter */}
-        <div className="flex items-center gap-2.5 bg-slate-900/90 border border-slate-800 px-3 py-1 rounded-full shadow-sm">
+        <div className="flex items-center gap-2 bg-[#090d16] border border-slate-800 px-3 py-1 rounded-full shadow-sm">
           <span className="text-slate-300 text-[11px] font-medium">Centers to fund</span>
           <button
             onClick={() => setCentersToFund((prev) => Math.max(1, prev - 1))}
@@ -367,12 +332,6 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
             +
           </button>
         </div>
-      </div>
-
-      {/* Map Footnote Annotation */}
-      <div className="px-5 py-1.5 border-t border-slate-800/60 bg-[#080d16] text-[10px] text-slate-500 flex justify-between">
-        <span>Dashed ring = straight-line reach</span>
-        <span>Base map: Google Maps (in build) · Tracts: Census TIGER/Line</span>
       </div>
     </div>
   );
