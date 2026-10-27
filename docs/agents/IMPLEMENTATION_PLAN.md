@@ -4,6 +4,7 @@
 > **City & Track:** Atlanta, GA · *This budget cycle* (3 permanent cooling centers, City Council vote in 3 weeks)
 > **GCP Project:** `qwiklabs-gcp-04-ec3596addc43` (Compute: `us-central1`, Vertex AI Gemini 3: `global`, BigQuery: `US`)
 > **Base Branch:** Latest `origin/main` (`4b15bf4`) from forked repo `chintamanenirc/A4I2026-challenge-1-walkability`
+> **Implementation Branch:** `kit/antigravity` → PR to `main` (`chintamanenirc/A4I2026-challenge-1-walkability`)
 
 ---
 
