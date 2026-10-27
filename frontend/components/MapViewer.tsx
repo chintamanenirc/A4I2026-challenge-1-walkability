@@ -1,25 +1,59 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ExternalLink,
   Navigation,
   Compass,
   Layers,
   ThermometerSun,
-  Maximize2,
   Copy,
   Check,
   MapPin,
+  TrendingUp,
+  Users,
+  Car,
+  Activity,
+  Flame,
 } from "lucide-react";
+
+export interface DriverItem {
+  feature: string;
+  attributionF: number;
+  interpretation?: string;
+  label?: string;
+}
+
+export interface DemographicsItem {
+  povertyRatePct?: number;
+  noVehicleRatePct?: number;
+  medianIncome?: number;
+  totalPop?: number;
+  medianAge?: number;
+}
 
 export interface LocationPoint {
   lat: number;
   lon: number;
   label?: string;
   heatOffset?: number;
+  predictedOffsetF?: number;
+  drivers?: DriverItem[];
+  demographics?: DemographicsItem;
+  tractId?: string;
+  score?: number;
+  why?: string;
   agentId?: "urban_heat_agent" | "atlanta_heat_agent";
   agentLabel?: string;
+}
+
+export interface HeatCellItem {
+  cell_id: string;
+  lat: number;
+  lon: number;
+  mean_temp_f: number;
+  offset_f: number;
+  nearest_geo_id?: string;
 }
 
 interface MapViewerProps {
@@ -34,12 +68,31 @@ export default function MapViewer({
   onSelectLocation,
 }: MapViewerProps) {
   const [mapType, setMapType] = useState<"roadmap" | "satellite">("roadmap");
+  const [showHeatGrid, setShowHeatGrid] = useState(false);
+  const [heatGridCells, setHeatGridCells] = useState<HeatCellItem[]>([]);
+  const [loadingGrid, setLoadingGrid] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const currentLat = selectedLocation ? selectedLocation.lat : 33.7043;
   const currentLon = selectedLocation ? selectedLocation.lon : -84.3610;
 
-  // Google Maps Embed with specific map types
+  // Fetch heat grid cells from BigQuery semantic layer when toggled
+  useEffect(() => {
+    if (showHeatGrid && heatGridCells.length === 0 && !loadingGrid) {
+      setLoadingGrid(true);
+      fetch("/api/semantic?type=heat_grid&limit=15")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.cells && Array.isArray(data.cells)) {
+            setHeatGridCells(data.cells);
+          }
+        })
+        .catch((err) => console.error("Error loading heat grid cells:", err))
+        .finally(() => setLoadingGrid(false));
+    }
+  }, [showHeatGrid, heatGridCells.length, loadingGrid]);
+
+  // Google Maps Embed with dynamic center and map type
   const embedUrl =
     mapType === "satellite"
       ? `https://maps.google.com/maps?q=${currentLat},${currentLon}&t=k&z=16&output=embed`
@@ -54,12 +107,16 @@ export default function MapViewer({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const offsetValue = selectedLocation?.predictedOffsetF ?? selectedLocation?.heatOffset;
+  const drivers = selectedLocation?.drivers || [];
+  const demographics = selectedLocation?.demographics;
+
   return (
     <div className="flex flex-col h-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl">
       {/* Top Header Bar */}
-      <div className="p-4 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+      <div className="p-3.5 bg-slate-950 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
             <Compass className="w-5 h-5" />
           </div>
           <div>
@@ -67,7 +124,7 @@ export default function MapViewer({
               <h2 className="font-semibold text-slate-100 text-sm sm:text-base">
                 Google Maps Spatial Inspector
               </h2>
-              <span className="px-2 py-0.5 text-[11px] bg-emerald-500/20 text-emerald-300 rounded-full font-medium border border-emerald-500/30">
+              <span className="px-2 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-300 rounded-full font-medium border border-emerald-500/30">
                 Live Sync
               </span>
             </div>
@@ -88,27 +145,41 @@ export default function MapViewer({
 
         {/* View Mode & Actions */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* BigQuery Heat Grid Layer Toggle */}
+          <button
+            onClick={() => setShowHeatGrid(!showHeatGrid)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+              showHeatGrid
+                ? "bg-rose-500/20 border-rose-500/50 text-rose-300 shadow-sm"
+                : "bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200"
+            }`}
+            title="Toggle BigQuery a4i_semantic.fact_heat_cell grid hotspots"
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>Heat Grid ({showHeatGrid ? "ON" : "OFF"})</span>
+          </button>
+
           {/* Layer Switcher */}
           <div className="bg-slate-900 p-1 rounded-xl flex gap-1 border border-slate-800 text-xs">
             <button
               onClick={() => setMapType("roadmap")}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+              className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
                 mapType === "roadmap"
                   ? "bg-slate-800 text-white shadow-sm border border-slate-700"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Street Map
+              Street
             </button>
             <button
               onClick={() => setMapType("satellite")}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+              className={`px-2.5 py-1 rounded-lg font-medium transition-all ${
                 mapType === "satellite"
                   ? "bg-emerald-600 text-white shadow-sm"
                   : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              Tree Canopy & Satellite
+              Canopy / Satellite
             </button>
           </div>
 
@@ -117,7 +188,7 @@ export default function MapViewer({
             href={externalWalkUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-xl font-medium transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-xl font-medium transition-colors shadow-sm"
             title="Inspect 10-minute pedestrian walking distance in Google Maps"
           >
             <Navigation className="w-3.5 h-3.5" />
@@ -129,13 +200,47 @@ export default function MapViewer({
             href={externalSearchUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl font-medium border border-slate-700 transition-colors"
+            className="flex items-center p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-xl border border-slate-700 transition-colors"
             title="Open in Google Maps"
           >
             <ExternalLink className="w-3.5 h-3.5" />
           </a>
         </div>
       </div>
+
+      {/* Optional Heat Grid Strip if enabled */}
+      {showHeatGrid && (
+        <div className="p-2.5 bg-rose-950/30 border-b border-rose-900/40 flex items-center gap-2 overflow-x-auto text-xs shrink-0">
+          <span className="text-rose-400 text-[11px] uppercase tracking-wider font-semibold whitespace-nowrap pl-1 flex items-center gap-1">
+            <Flame className="w-3.5 h-3.5" />
+            BigQuery Heat Cells:
+          </span>
+          {loadingGrid ? (
+            <span className="text-xs text-slate-400 italic">Loading fact_heat_cell data...</span>
+          ) : (
+            <div className="flex items-center gap-2">
+              {heatGridCells.map((cell) => (
+                <button
+                  key={cell.cell_id}
+                  onClick={() =>
+                    onSelectLocation({
+                      lat: cell.lat,
+                      lon: cell.lon,
+                      label: `Heat Cell ${cell.cell_id} (${cell.offset_f > 0 ? "+" : ""}${cell.offset_f}°F)`,
+                      predictedOffsetF: cell.offset_f,
+                      tractId: cell.nearest_geo_id,
+                      why: `High-resolution heat cell (${cell.mean_temp_f}°F reading)`,
+                    })
+                  }
+                  className="px-2.5 py-1 rounded-lg bg-slate-900/90 border border-rose-800/60 hover:border-rose-500 text-rose-300 text-[11px] font-mono whitespace-nowrap transition"
+                >
+                  {cell.cell_id}: <strong>{cell.offset_f > 0 ? `+${cell.offset_f}` : cell.offset_f}°F</strong>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Main Map Viewport */}
       <div className="relative flex-1 w-full bg-slate-950 min-h-[380px]">
@@ -147,25 +252,131 @@ export default function MapViewer({
           allowFullScreen
         />
 
-        {/* Floating Site Summary Card */}
-        <div className="absolute bottom-4 left-4 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 p-3.5 rounded-xl shadow-2xl text-xs max-w-xs pointer-events-auto">
-          <div className="flex items-center gap-2 text-amber-400 font-semibold mb-1.5">
-            <ThermometerSun className="w-4 h-4 text-amber-400" />
-            <span>Selected Site Pin</span>
+        {/* Floating Site Summary & ML.EXPLAIN_PREDICT Drivers Card */}
+        <div className="absolute bottom-4 left-4 right-4 sm:right-auto bg-slate-900/95 backdrop-blur-md border border-slate-700/80 p-3.5 rounded-2xl shadow-2xl text-xs sm:max-w-md pointer-events-auto max-h-[340px] overflow-y-auto">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-amber-400 font-semibold">
+              <ThermometerSun className="w-4 h-4 text-amber-400" />
+              <span>
+                {selectedLocation?.tractId ? `Tract ${selectedLocation.tractId}` : "Site Spatial Assessment"}
+              </span>
+            </div>
+            {offsetValue !== undefined && (
+              <span
+                className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold ${
+                  offsetValue > 0
+                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                    : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                }`}
+              >
+                {offsetValue > 0 ? `+${offsetValue.toFixed(2)}` : offsetValue.toFixed(2)}°F offset
+              </span>
+            )}
           </div>
-          <div className="space-y-1 text-slate-300">
+
+          {/* Coordinate & Summary Row */}
+          <div className="space-y-1.5 text-slate-300 pb-2 border-b border-slate-800">
             <div className="flex justify-between font-mono text-[11px]">
-              <span className="text-slate-400">Target Coordinates:</span>
+              <span className="text-slate-400">Centroid Coordinates:</span>
               <span className="text-emerald-400 font-medium">
                 {currentLat.toFixed(4)}, {currentLon.toFixed(4)}
               </span>
             </div>
-            {selectedLocation?.label && (
-              <p className="text-[11px] text-slate-400 line-clamp-2">
-                {selectedLocation.label}
+            {selectedLocation?.why && (
+              <p className="text-[11px] text-slate-300 leading-snug">
+                {selectedLocation.why}
               </p>
             )}
           </div>
+
+          {/* Feature Attributions / Drivers Breakdown */}
+          {drivers.length > 0 && (
+            <div className="mt-2.5 pt-2 border-t border-slate-800/80">
+              <div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">
+                <span className="flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-amber-400" /> ML.EXPLAIN_PREDICT Drivers (°F)
+                </span>
+                <span className="text-[9px] text-slate-500 font-normal">Impact vs Baseline</span>
+              </div>
+              <div className="space-y-1.5">
+                {drivers.slice(0, 4).map((d, idx) => {
+                  const isWarming = d.attributionF >= 0;
+                  const barWidth = Math.min(100, Math.max(15, Math.abs(d.attributionF) * 35));
+                  return (
+                    <div key={idx} className="space-y-0.5">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-300 truncate max-w-[190px]" title={d.feature}>
+                          {d.feature.replace(/_/g, " ")}
+                        </span>
+                        <span
+                          className={`font-mono font-semibold ${
+                            isWarming ? "text-amber-400" : "text-emerald-400"
+                          }`}
+                        >
+                          {isWarming ? `+${d.attributionF.toFixed(2)}` : d.attributionF.toFixed(2)}°F
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden flex">
+                        <div
+                          style={{ width: `${barWidth}%` }}
+                          className={`h-full rounded-full ${
+                            isWarming
+                              ? "bg-gradient-to-r from-amber-500 to-rose-500"
+                              : "bg-gradient-to-r from-teal-500 to-emerald-500"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Demographic & Vulnerability Badges */}
+          {demographics && (
+            <div className="mt-2.5 pt-2 border-t border-slate-800/80">
+              <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1.5 flex items-center gap-1">
+                <Users className="w-3 h-3 text-blue-400" /> Demographic Vulnerability
+              </div>
+              <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                {demographics.povertyRatePct !== undefined && (
+                  <div className="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Poverty Rate:</span>
+                    <span className="font-semibold text-rose-300 font-mono">
+                      {demographics.povertyRatePct}%
+                    </span>
+                  </div>
+                )}
+                {demographics.noVehicleRatePct !== undefined && (
+                  <div className="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">No Vehicle:</span>
+                    <span className="font-semibold text-amber-300 font-mono">
+                      {demographics.noVehicleRatePct}%
+                    </span>
+                  </div>
+                )}
+                {demographics.medianAge !== undefined && (
+                  <div className="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Median Age:</span>
+                    <span className="font-semibold text-slate-200 font-mono">
+                      {demographics.medianAge} yrs
+                    </span>
+                  </div>
+                )}
+                {demographics.totalPop !== undefined && (
+                  <div className="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span className="text-slate-400">Population:</span>
+                    <span className="font-semibold text-slate-200 font-mono">
+                      {Math.round(demographics.totalPop).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Footer Action */}
           <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
             <span className="text-slate-400">Pedestrian Accessibility:</span>
             <a
@@ -174,7 +385,7 @@ export default function MapViewer({
               rel="noopener noreferrer"
               className="text-blue-400 hover:underline flex items-center gap-1 font-medium"
             >
-              10-min Isochrone ↗
+              10-min Walk Isochrone ↗
             </a>
           </div>
         </div>
@@ -182,10 +393,10 @@ export default function MapViewer({
 
       {/* Candidate Sites Selector Carousel if multiple sites exist */}
       {locations.length > 0 && (
-        <div className="p-3 bg-slate-950 border-t border-slate-800 flex items-center gap-2 overflow-x-auto text-xs">
+        <div className="p-3 bg-slate-950 border-t border-slate-800 flex items-center gap-2 overflow-x-auto text-xs shrink-0">
           <span className="text-slate-400 text-[11px] uppercase tracking-wider font-semibold whitespace-nowrap pl-1 flex items-center gap-1">
             <MapPin className="w-3.5 h-3.5 text-emerald-400" />
-            Identified Sites:
+            Ranked Sites:
           </span>
           <div className="flex items-center gap-2">
             {locations.map((loc, idx) => {
@@ -193,6 +404,7 @@ export default function MapViewer({
                 Math.abs(currentLat - loc.lat) < 0.001 &&
                 Math.abs(currentLon - loc.lon) < 0.001;
               const isAgent2 = loc.agentId === "atlanta_heat_agent";
+              const offsetDisplay = loc.predictedOffsetF ?? loc.heatOffset;
               return (
                 <button
                   key={`${loc.lat}-${loc.lon}-${idx}`}
@@ -215,9 +427,13 @@ export default function MapViewer({
                     {idx + 1}
                   </span>
                   <span>
-                    {loc.agentLabel ? `${loc.agentLabel}: ` : ""}
-                    {loc.lat.toFixed(4)}, {loc.lon.toFixed(4)}
+                    {loc.tractId ? `Tract ${loc.tractId}` : `${loc.lat.toFixed(4)}, ${loc.lon.toFixed(4)}`}
                   </span>
+                  {offsetDisplay !== undefined && (
+                    <span className="text-[10px] opacity-80 font-normal">
+                      ({offsetDisplay > 0 ? `+${offsetDisplay.toFixed(1)}` : offsetDisplay.toFixed(1)}°F)
+                    </span>
+                  )}
                 </button>
               );
             })}

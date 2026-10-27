@@ -110,13 +110,70 @@ Compare **Agent 1 (Urban Heat Planner)** and **Agent 2 (Atlanta BQML Explainer)*
   const [isCompareMode, setIsCompareMode] = useState(true);
   const [activeAgent, setActiveAgent] = useState<"urban_heat_agent" | "atlanta_heat_agent">("urban_heat_agent");
   const [selectedLocation, setSelectedLocation] = useState<LocationPoint>({
-    lat: 33.7043,
-    lon: -84.361,
-    label: "Thomasville, Atlanta (Tract 13121006802)",
+    lat: 33.7285,
+    lon: -84.4217,
+    label: "Agent 2: Tract 13121006200 (+3.19°F)",
+    predictedOffsetF: 3.19,
+    tractId: "13121006200",
+    drivers: [
+      { feature: "latitude", attributionF: 2.03 },
+      { feature: "longitude", attributionF: 0.63 },
+      { feature: "poverty_rate", attributionF: 0.45 },
+      { feature: "tree_canopy", attributionF: -0.80 },
+    ],
+    demographics: {
+      povertyRatePct: 18.4,
+      noVehicleRatePct: 18.1,
+      medianAge: 28.5,
+      totalPop: 2025,
+    },
+    why: "Tract 13121006200 running hot with prominent built-environment and thermal elevation drivers.",
+    agentId: "atlanta_heat_agent",
+    agentLabel: "Agent 2",
   });
   const [allLocations, setAllLocations] = useState<LocationPoint[]>([
-    { lat: 33.7285, lon: -84.4217, label: "Agent 2: Tract 13121006200 (+3.17°F)", agentId: "atlanta_heat_agent", agentLabel: "Agent 2" },
-    { lat: 33.7043, lon: -84.3610, label: "Agent 1: Tract 13121006802 (+0.87°F)", agentId: "urban_heat_agent", agentLabel: "Agent 1" },
+    {
+      lat: 33.7285,
+      lon: -84.4217,
+      label: "Agent 2: Tract 13121006200 (+3.19°F)",
+      predictedOffsetF: 3.19,
+      tractId: "13121006200",
+      drivers: [
+        { feature: "latitude", attributionF: 2.03 },
+        { feature: "longitude", attributionF: 0.63 },
+        { feature: "poverty_rate", attributionF: 0.45 },
+        { feature: "tree_canopy", attributionF: -0.80 },
+      ],
+      demographics: {
+        povertyRatePct: 18.4,
+        noVehicleRatePct: 18.1,
+        medianAge: 28.5,
+        totalPop: 2025,
+      },
+      why: "Tract 13121006200 running hot with prominent built-environment drivers.",
+      agentId: "atlanta_heat_agent",
+      agentLabel: "Agent 2",
+    },
+    {
+      lat: 33.7043,
+      lon: -84.3610,
+      label: "Agent 1: Tract 13121006802 (+0.87°F)",
+      predictedOffsetF: 0.87,
+      tractId: "13121006802",
+      drivers: [
+        { feature: "poverty_rate", attributionF: 0.72 },
+        { feature: "transit_distance", attributionF: 0.35 },
+      ],
+      demographics: {
+        povertyRatePct: 32.1,
+        noVehicleRatePct: 24.6,
+        medianAge: 34.2,
+        totalPop: 3100,
+      },
+      why: "Thomasville, Atlanta: high-need neighborhood prioritized for cooling center placement.",
+      agentId: "urban_heat_agent",
+      agentLabel: "Agent 1",
+    },
   ]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -172,13 +229,19 @@ Compare **Agent 1 (Urban Heat Planner)** and **Agent 2 (Atlanta BQML Explainer)*
       }
 
       if (data.compare) {
-        // Collect coordinates from both agents
+        // Collect coordinates from both agents with structured ML drivers & demographics
         const combinedCoords: LocationPoint[] = [];
 
         const agent1Coords: LocationPoint[] = (data.agent1?.coordinates || []).map((c: any) => ({
           lat: Number(c.lat),
           lon: Number(c.lon),
           label: c.label || `Agent 1 Site (${c.lat.toFixed(4)}, ${c.lon.toFixed(4)})`,
+          predictedOffsetF: c.predictedOffsetF,
+          drivers: c.drivers,
+          demographics: c.demographics,
+          why: c.why,
+          tractId: c.tractId,
+          score: c.score,
           agentId: "urban_heat_agent" as const,
           agentLabel: "Agent 1",
         }));
@@ -187,6 +250,12 @@ Compare **Agent 1 (Urban Heat Planner)** and **Agent 2 (Atlanta BQML Explainer)*
           lat: Number(c.lat),
           lon: Number(c.lon),
           label: c.label || `Agent 2 Site (${c.lat.toFixed(4)}, ${c.lon.toFixed(4)})`,
+          predictedOffsetF: c.predictedOffsetF,
+          drivers: c.drivers,
+          demographics: c.demographics,
+          why: c.why,
+          tractId: c.tractId,
+          score: c.score,
           agentId: "atlanta_heat_agent" as const,
           agentLabel: "Agent 2",
         }));
@@ -222,6 +291,12 @@ Compare **Agent 1 (Urban Heat Planner)** and **Agent 2 (Atlanta BQML Explainer)*
           lat: Number(c.lat),
           lon: Number(c.lon),
           label: c.label || `Site (${c.lat.toFixed(4)}, ${c.lon.toFixed(4)})`,
+          predictedOffsetF: c.predictedOffsetF,
+          drivers: c.drivers,
+          demographics: c.demographics,
+          why: c.why,
+          tractId: c.tractId,
+          score: c.score,
           agentId: agentToUse,
           agentLabel: agentToUse === "atlanta_heat_agent" ? "Agent 2" : "Agent 1",
         }));
