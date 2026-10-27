@@ -412,6 +412,43 @@ tools:
       FROM `qwiklabs-gcp-04-ec3596addc43.a4i_semantic.audit_city_baseline`
       LIMIT 1
 
+  tract_layer:
+    kind: bigquery-sql
+    source: heat-bq
+    description: >-
+      Every Atlanta census tract in a4i_semantic.dim_tract with its TIGER/Line polygon
+      (public domain, simplified to simplify_m meters) as GeoJSON, the tract mean of
+      a4i_ml.grid_predictions.predicted_offset_f, and no-vehicle, 65+, poverty and population.
+      Feeds the heat-ui choropleth and equity-audit scatter.
+    parameters:
+      - name: simplify_m
+        type: float
+        description: Polygon simplification tolerance in meters (clamped to 5-100; 15 for the UI).
+    statement: |
+      WITH preds AS (
+        SELECT geo_id, ROUND(AVG(predicted_offset_f), 2) AS predicted_offset_f
+        FROM `qwiklabs-gcp-04-ec3596addc43.a4i_ml.grid_predictions`
+        GROUP BY geo_id
+      ),
+      shapes AS (
+        SELECT
+          LPAD(TRIM(CAST(geo_id AS STRING)), 11, '0') AS geo_id,
+          ST_SIMPLIFY(tract_geom, LEAST(GREATEST(@simplify_m, 5.0), 100.0)) AS geom
+        FROM `bigquery-public-data.geo_census_tracts.us_census_tracts_national`
+      )
+      SELECT
+        d.geo_id,
+        p.predicted_offset_f,
+        ROUND(d.no_vehicle_rate, 4) AS no_vehicle_rate,
+        ROUND(d.share_65_plus, 4) AS share_65_plus,
+        ROUND(d.poverty_rate, 4) AS poverty_rate,
+        d.population,
+        ST_ASGEOJSON(s.geom) AS geometry_json
+      FROM `qwiklabs-gcp-04-ec3596addc43.a4i_semantic.dim_tract` d
+      JOIN shapes s USING (geo_id)
+      LEFT JOIN preds p USING (geo_id)
+      ORDER BY d.geo_id
+
 toolsets:
   heat-planner:
     - explain_point
@@ -424,3 +461,4 @@ toolsets:
     - hottest_measured_cells
     - hottest_predicted_cells
     - city_baseline
+    - tract_layer
