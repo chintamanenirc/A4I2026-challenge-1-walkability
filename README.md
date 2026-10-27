@@ -47,7 +47,8 @@ Our tool is honest about what today’s public data can and cannot do, giving th
 > - **Architecture & Implementation Plan:** [`docs/agents/IMPLEMENTATION_PLAN.md`](docs/agents/IMPLEMENTATION_PLAN.md)
 > - **Data & ML Handoff:** [`docs/HANDOFF.md`](docs/HANDOFF.md)
 > - **Design Decisions & Data Licensing:** [`docs/DECISIONS.md`](docs/DECISIONS.md)
-> - **Deployment Runbook:** [`DEPLOY_P4.md`](DEPLOY_P4.md)
+> - **Planner UI (heat-ui):** [`ui_service/README.md`](ui_service/README.md)
+> - **Deployment:** [`infra/`](infra/) scripts (`deploy_toolbox.sh`, `deploy_agent_api.sh`) and section 8.1 of the implementation plan for `heat-ui`
 
 *Data Credits: NOAA & CAPA Strategies Heat Watch (CC0), NOAA GHCN-Daily, US Census ACS & TIGER/Line. Thanks to the volunteers who drove the Atlanta routes.*
 
