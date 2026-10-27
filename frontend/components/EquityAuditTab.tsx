@@ -31,13 +31,13 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
   ];
 
   return (
-    <div className="p-8 max-w-[1450px] mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto w-full p-6 flex flex-col gap-6">
       {/* Title & Introduction */}
       <div>
         <h2 className="text-2xl font-extrabold text-slate-100 tracking-tight">
           Did our sites land where heat hurts most?
         </h2>
-        <p className="text-xs text-slate-400 mt-1 max-w-3xl leading-relaxed">
+        <p className="text-xs text-slate-400 mt-1.5 max-w-3xl leading-relaxed">
           Being hot isn’t the same as being at risk. We check every recommendation against who actually lives there. Race was never a model input; it appears only as a check on the output.
         </p>
       </div>
@@ -55,32 +55,32 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
           <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
             VERDICT
           </div>
-          <div className="text-sm font-bold text-slate-100 mt-0.5">
+          <div className="text-sm font-bold text-slate-100 mt-1">
             [Our sites skew toward / away from need.]
           </div>
         </div>
 
         {/* Right: 4 Directional Metrics */}
-        <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
-          <div className="bg-[#0c121e] border border-slate-800 px-3 py-1.5 rounded-lg text-slate-300">
+        <div className="flex flex-wrap items-center gap-3.5 text-xs font-mono">
+          <div className="bg-[#0c121e] border border-slate-800 px-3.5 py-2 rounded-xl text-slate-300">
             Income · <span className="text-orange-400 font-bold">[↑/↓]</span>
           </div>
-          <div className="bg-[#0c121e] border border-slate-800 px-3 py-1.5 rounded-lg text-slate-300">
+          <div className="bg-[#0c121e] border border-slate-800 px-3.5 py-2 rounded-xl text-slate-300">
             Poverty · <span className="text-orange-400 font-bold">[↑/↓]</span>
           </div>
-          <div className="bg-[#0c121e] border border-slate-800 px-3 py-1.5 rounded-lg text-slate-300">
+          <div className="bg-[#0c121e] border border-slate-800 px-3.5 py-2 rounded-xl text-slate-300">
             No car · <span className="text-orange-400 font-bold">[↑/↓]</span>
           </div>
-          <div className="bg-[#0c121e] border border-slate-800 px-3 py-1.5 rounded-lg text-slate-300">
+          <div className="bg-[#0c121e] border border-slate-800 px-3.5 py-2 rounded-xl text-slate-300">
             65+ · <span className="text-orange-400 font-bold">[↑/↓]</span>
           </div>
         </div>
       </div>
 
-      {/* Main Analysis: 2 Columns */}
+      {/* Main Analysis: 2 Columns with gap-6 */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left Column: Scatter Plot (Where it’s hot vs. where heat hurts) */}
-        <div className="lg:col-span-6 bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+        <div className="lg:col-span-6 bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col justify-between gap-6">
           <div>
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-sm font-bold text-slate-100">
@@ -88,7 +88,7 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
               </h3>
               <button
                 onClick={() => setHighlightSites(!highlightSites)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all shadow-sm ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all shadow-sm ${
                   highlightSites
                     ? "bg-[#ea580c] text-white"
                     : "bg-slate-800 text-slate-300 hover:bg-slate-700"
@@ -97,12 +97,12 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                 Highlight our sites
               </button>
             </div>
-            <p className="text-[11px] text-slate-400 mb-4">
+            <p className="text-xs text-slate-400 mb-4">
               Each dot is a census tract · schematic until wired
             </p>
 
             {/* Quadrant Scatter Viewport */}
-            <div className="relative w-full h-[310px] bg-[#090d16] border border-slate-800/80 rounded-xl overflow-hidden p-4 select-none">
+            <div className="relative w-full h-[320px] bg-[#090d16] border border-slate-800/80 rounded-xl overflow-hidden p-4 select-none">
               {/* Quadrant Divider Grid */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="w-full h-px bg-slate-800/80" />
@@ -184,24 +184,24 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
             </div>
           </div>
 
-          <p className="text-[11px] text-slate-400 mt-3 pt-3 border-t border-slate-800/60 leading-normal">
+          <p className="text-xs text-slate-400 pt-3 border-t border-slate-800/60 leading-relaxed">
             Site 4 is hot but lower-need, one reason it was passed over. [Confirm with real tract values.]
           </p>
         </div>
 
         {/* Right Column: Comparative Horizontal Bars vs. Atlanta */}
-        <div className="lg:col-span-6 bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+        <div className="lg:col-span-6 bg-[#0c121e] border border-slate-800/80 rounded-2xl p-6 shadow-xl flex flex-col justify-between gap-6">
           <div>
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800/60">
+            <div className="flex items-center justify-between mb-5 pb-3 border-b border-slate-800/60">
               <h3 className="text-sm font-bold text-slate-100">
                 Recommended tracts vs. Atlanta
               </h3>
-              <div className="flex items-center gap-4 text-[11px]">
-                <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-5 text-xs">
+                <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-sm bg-[#ea580c]"></span>
                   <span className="text-slate-300 font-medium">Our sites</span>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-sm bg-slate-500"></span>
                   <span className="text-slate-400">Atlanta average</span>
                 </div>
@@ -209,26 +209,26 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
             </div>
 
             {/* 4 Comparative Metric Bars */}
-            <div className="space-y-4">
+            <div className="space-y-4.5">
               {/* Measure 1: Median household income */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-200">Median household income</span>
-                  <span className="text-[10px] text-slate-400">Lower = more need</span>
+                  <span className="text-[11px] text-slate-400">Lower = more need</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-3 rounded bg-slate-800 overflow-hidden">
                     <div className="h-full bg-[#ea580c] rounded" style={{ width: "51%" }} />
                   </div>
-                  <span className="w-12 text-right font-mono text-[11px] text-orange-400 font-bold">[value]</span>
+                  <span className="w-12 text-right font-mono text-xs text-orange-400 font-bold">[value]</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-3 rounded bg-slate-800 overflow-hidden">
                     <div className="h-full bg-slate-500 rounded" style={{ width: "80%" }} />
                   </div>
-                  <span className="w-12 text-right font-mono text-[11px] text-slate-400 font-bold">[value]</span>
+                  <span className="w-12 text-right font-mono text-xs text-slate-400 font-bold">[value]</span>
                 </div>
               </div>
 
@@ -236,21 +236,21 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-200">Poverty rate</span>
-                  <span className="text-[10px] text-slate-400">Higher = more need</span>
+                  <span className="text-[11px] text-slate-400">Higher = more need</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-3 rounded bg-slate-800 overflow-hidden">
                     <div className="h-full bg-[#ea580c] rounded" style={{ width: "70%" }} />
                   </div>
-                  <span className="w-12 text-right font-mono text-[11px] text-orange-400 font-bold">[value]</span>
+                  <span className="w-12 text-right font-mono text-xs text-orange-400 font-bold">[value]</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-3 rounded bg-slate-800 overflow-hidden">
                     <div className="h-full bg-slate-500 rounded" style={{ width: "34%" }} />
                   </div>
-                  <span className="w-12 text-right font-mono text-[11px] text-slate-400 font-bold">[value]</span>
+                  <span className="w-12 text-right font-mono text-xs text-slate-400 font-bold">[value]</span>
                 </div>
               </div>
 
@@ -258,21 +258,21 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-200">Households without a car</span>
-                  <span className="text-[10px] text-slate-400">Higher = harder to reach relief</span>
+                  <span className="text-[11px] text-slate-400">Higher = harder to reach relief</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-3 rounded bg-slate-800 overflow-hidden">
                     <div className="h-full bg-[#ea580c] rounded" style={{ width: "76%" }} />
                   </div>
-                  <span className="w-12 text-right font-mono text-[11px] text-orange-400 font-bold">[value]</span>
+                  <span className="w-12 text-right font-mono text-xs text-orange-400 font-bold">[value]</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-3 rounded bg-slate-800 overflow-hidden">
                     <div className="h-full bg-slate-500 rounded" style={{ width: "25%" }} />
                   </div>
-                  <span className="w-12 text-right font-mono text-[11px] text-slate-400 font-bold">[value]</span>
+                  <span className="w-12 text-right font-mono text-xs text-slate-400 font-bold">[value]</span>
                 </div>
               </div>
 
@@ -280,34 +280,34 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-slate-200">Residents 65 and older</span>
-                  <span className="text-[10px] text-slate-400">Higher = more heat risk</span>
+                  <span className="text-[11px] text-slate-400">Higher = more heat risk</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-3 rounded bg-slate-800 overflow-hidden">
                     <div className="h-full bg-[#ea580c] rounded" style={{ width: "60%" }} />
                   </div>
-                  <span className="w-12 text-right font-mono text-[11px] text-orange-400 font-bold">[value]</span>
+                  <span className="w-12 text-right font-mono text-xs text-orange-400 font-bold">[value]</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-3 rounded bg-slate-800 overflow-hidden">
                     <div className="h-full bg-slate-500 rounded" style={{ width: "42%" }} />
                   </div>
-                  <span className="w-12 text-right font-mono text-[11px] text-slate-400 font-bold">[value]</span>
+                  <span className="w-12 text-right font-mono text-xs text-slate-400 font-bold">[value]</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Bottom Card Controls */}
-          <div className="flex items-center justify-between border-t border-slate-800/60 pt-3 mt-4">
-            <span className="text-[10px] text-slate-500">
+          <div className="flex items-center justify-between border-t border-slate-800/60 pt-4 mt-2">
+            <span className="text-xs text-slate-500">
               Bar lengths are placeholders until the audit query runs.
             </span>
             <button
               onClick={() => setShowRacialAudit(!showRacialAudit)}
-              className="px-3 py-1 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
+              className="px-3.5 py-1.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-colors"
             >
               {showRacialAudit ? "Hide racial composition" : "Show racial composition (audit only)"}
             </button>
@@ -316,16 +316,16 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
       </div>
 
       {/* Bottom Action Controls matching PDF Screen */}
-      <div className="flex items-center gap-3 pt-2">
+      <div className="flex items-center gap-4 pt-2">
         <button
           onClick={() => onNavigateTab("proposal")}
-          className="px-5 py-2.5 rounded-xl bg-[#ea580c] hover:bg-orange-600 text-white font-semibold text-xs tracking-wide transition-all shadow-md active:scale-[0.99]"
+          className="px-6 py-3 rounded-xl bg-[#ea580c] hover:bg-orange-600 text-white font-semibold text-xs tracking-wide transition-all shadow-md active:scale-[0.99]"
         >
           Add audit to council proposal →
         </button>
         <button
           onClick={() => onNavigateTab("sites")}
-          className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs transition-colors shadow-sm"
+          className="px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs transition-colors shadow-sm"
         >
           Back to sites
         </button>
