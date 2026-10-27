@@ -1,0 +1,172 @@
+{
+  "_mock_note": "MOCK AgentApiResponse for UI development, shaped by ui_service/contracts/agent_api.py (draft). Tracts, offsets, no-car/65+ rates and audit ratios are from docs/DECISIONS.md (DEC-010, DEC-011); the city 95°F days figure is from IMPLEMENTATION_PLAN.md q3. Site 2/3 coordinates, drivers, catchments, per-site hot days, the per-year station counts and the runner-up are invented. Replace with docs/contracts/samples/site_selection_atlanta.json when heat-planner-api publishes it.",
+  "schema_version": "1.0.0",
+  "trace_id": "tr_mock0001",
+  "status": "ok",
+  "intent": {
+    "intent_type": "site_selection",
+    "status": "ok",
+    "k": 3,
+    "radius_m": 800.0,
+    "min_spacing_m": 2000.0,
+    "threshold_f": 95.0
+  },
+  "data_result": {
+    "status": "ok",
+    "intent_type": "site_selection",
+    "rows": [],
+    "summary_metrics": {"candidates_considered": 10},
+    "provenance": []
+  },
+  "recommendation": {
+    "city": "Atlanta",
+    "track": "budget",
+    "scenario": "Fund permanent cooling centers · council vote in 3 weeks",
+    "campaign_mean_f": 82.062,
+    "sites": [
+      {
+        "rank": 1, "site_id": "grid_mock_1", "lat": 33.7195, "lon": -84.4252,
+        "address_hint": "Venetian Hills / Oakland City", "geo_id": "13121007603",
+        "predicted_offset_f": 1.28, "unmeasured": true, "priority_score": 2.41,
+        "drivers": [
+          {"feature": "pop_density_km2", "label": "Street density", "attribution_f": 0.62},
+          {"feature": "median_year_built", "label": "Older building stock", "attribution_f": 0.41},
+          {"feature": "km_from_center", "label": "Distance from downtown", "attribution_f": 0.47},
+          {"feature": "water_share", "label": "Water nearby", "attribution_f": -0.22}
+        ],
+        "catchment": {
+          "radius_m": 800, "tracts_within_radius": 4, "population_within_radius": 9120,
+          "pop_65_plus_within_radius": 1210, "car_free_households_within_radius": 1530,
+          "households_within_radius": 3480, "share_65_plus_within_radius": 0.133,
+          "no_vehicle_rate_within_radius": 0.44, "pop_weighted_poverty_rate": 0.39,
+          "tract_geo_ids": ["13121007603"]
+        },
+        "hot_days": {
+          "offset_f": 1.28, "mean_days_ge_95f_equiv_per_yr": 33.1,
+          "city_baseline_days_ge_95f_per_yr": 23.9, "extra_days_ge_95f_equiv_per_yr": 9.2,
+          "full_years_counted": 7
+        },
+        "tract_no_vehicle_rate": 0.564, "tract_share_65_plus": 0.151, "tract_poverty_rate": 0.47,
+        "why": "Hot and car-free: 56.4% of households have no car.",
+        "provenance_ids": ["P1", "P2", "P3"]
+      },
+      {
+        "rank": 2, "site_id": "grid_mock_2", "lat": 33.7372, "lon": -84.4128,
+        "address_hint": "West End / Ashview Heights", "geo_id": "13121004200",
+        "predicted_offset_f": 1.49, "unmeasured": false, "priority_score": 2.27,
+        "drivers": [
+          {"feature": "pop_density_km2", "label": "Street density", "attribution_f": 0.71},
+          {"feature": "housing_density_km2", "label": "Housing density", "attribution_f": 0.52},
+          {"feature": "km_from_center", "label": "Distance from downtown", "attribution_f": 0.38},
+          {"feature": "water_share", "label": "Water nearby", "attribution_f": -0.12}
+        ],
+        "catchment": {
+          "radius_m": 800, "tracts_within_radius": 5, "population_within_radius": 11340,
+          "pop_65_plus_within_radius": 1490, "car_free_households_within_radius": 1720,
+          "households_within_radius": 4410, "share_65_plus_within_radius": 0.131,
+          "no_vehicle_rate_within_radius": 0.39, "pop_weighted_poverty_rate": 0.41,
+          "tract_geo_ids": ["13121004200"]
+        },
+        "hot_days": {
+          "offset_f": 1.49, "mean_days_ge_95f_equiv_per_yr": 35.0,
+          "city_baseline_days_ge_95f_per_yr": 23.9, "extra_days_ge_95f_equiv_per_yr": 11.1,
+          "full_years_counted": 7
+        },
+        "tract_no_vehicle_rate": 0.467, "tract_share_65_plus": 0.168, "tract_poverty_rate": 0.43,
+        "why": "Hottest of the three; measured on the campaign day.",
+        "provenance_ids": ["P1", "P2", "P3"]
+      },
+      {
+        "rank": 3, "site_id": "grid_mock_3", "lat": 33.7341, "lon": -84.3946,
+        "address_hint": "Mechanicsville / Summerhill", "geo_id": "13121004800",
+        "predicted_offset_f": 1.35, "unmeasured": true, "priority_score": 2.12,
+        "drivers": [
+          {"feature": "housing_density_km2", "label": "Housing density", "attribution_f": 0.58},
+          {"feature": "pop_within_1500m", "label": "People within 1.5 km", "attribution_f": 0.49},
+          {"feature": "median_year_built", "label": "Older building stock", "attribution_f": 0.44},
+          {"feature": "water_share", "label": "Water nearby", "attribution_f": -0.16}
+        ],
+        "catchment": {
+          "radius_m": 800, "tracts_within_radius": 4, "population_within_radius": 8760,
+          "pop_65_plus_within_radius": 1860, "car_free_households_within_radius": 1240,
+          "households_within_radius": 3390, "share_65_plus_within_radius": 0.212,
+          "no_vehicle_rate_within_radius": 0.37, "pop_weighted_poverty_rate": 0.36,
+          "tract_geo_ids": ["13121004800"]
+        },
+        "hot_days": {
+          "offset_f": 1.35, "mean_days_ge_95f_equiv_per_yr": 33.8,
+          "city_baseline_days_ge_95f_per_yr": 23.9, "extra_days_ge_95f_equiv_per_yr": 9.9,
+          "full_years_counted": 7
+        },
+        "tract_no_vehicle_rate": 0.38, "tract_share_65_plus": 0.242, "tract_poverty_rate": 0.40,
+        "why": "Highest senior share of the three: 24.2% are 65+.",
+        "provenance_ids": ["P1", "P2", "P3"]
+      }
+    ],
+    "runner_up_sites": [
+      {
+        "rank": 4, "site_id": "grid_mock_4", "lat": 33.7522, "lon": -84.4301,
+        "address_hint": "Bankhead (mock)", "geo_id": "13121008400",
+        "predicted_offset_f": 1.52, "unmeasured": true, "priority_score": 1.98,
+        "drivers": [
+          {"feature": "pop_density_km2", "label": "Street density", "attribution_f": 0.69},
+          {"feature": "km_from_center", "label": "Distance from downtown", "attribution_f": 0.55},
+          {"feature": "water_share", "label": "Water nearby", "attribution_f": 0.28}
+        ],
+        "tract_no_vehicle_rate": 0.21, "tract_share_65_plus": 0.11, "tract_poverty_rate": 0.24,
+        "passed_over_reason": "Hot but lower need: 21% of households have no car, vs. 38–56% at the funded sites.",
+        "provenance_ids": ["P1"]
+      }
+    ],
+    "heat_frequency": {
+      "years": [
+        {"year": 2019, "days_ge_90_f": 58, "days_ge_95_f": 31, "days_ge_100_f": 3},
+        {"year": 2020, "days_ge_90_f": 34, "days_ge_95_f": 12, "days_ge_100_f": 0},
+        {"year": 2021, "days_ge_90_f": 39, "days_ge_95_f": 15, "days_ge_100_f": 0},
+        {"year": 2022, "days_ge_90_f": 47, "days_ge_95_f": 22, "days_ge_100_f": 1},
+        {"year": 2023, "days_ge_90_f": 51, "days_ge_95_f": 26, "days_ge_100_f": 2},
+        {"year": 2024, "days_ge_90_f": 55, "days_ge_95_f": 29, "days_ge_100_f": 2},
+        {"year": 2025, "days_ge_90_f": 53, "days_ge_95_f": 32, "days_ge_100_f": 3}
+      ],
+      "mean_days_ge_95_f": 23.9,
+      "caveat": "Seven years of station history show year-to-year swings, not a long-term climate trend."
+    },
+    "equity_audit": {
+      "site_geo_ids": ["13121007603", "13121004200", "13121004800"],
+      "measures": [
+        {"measure": "median_income", "sites_value": 17853, "city_value": 75714, "ratio": 0.24},
+        {"measure": "poverty_rate", "sites_value": 0.4405, "city_value": 0.1395, "ratio": 3.16},
+        {"measure": "no_vehicle_rate", "sites_value": 0.5041, "city_value": 0.0823, "ratio": 6.12},
+        {"measure": "share_65_plus", "sites_value": 0.1944, "city_value": 0.1247, "ratio": 1.56}
+      ],
+      "verdict": "Our sites skew toward need on all four measures.",
+      "racial_composition": [
+        {"group": "Black", "sites_share": 0.9081, "city_share": 0.4166}
+      ],
+      "provenance_ids": ["P4"]
+    },
+    "proposal_sections": {
+      "why_these": "Site 1 runs hot mainly because of street density; Site 2 because of street and housing density; Site 3 because of housing density and the number of people within 1.5 km [P1]. Sites were chosen so each one reaches residents the others miss.",
+      "what_this_displaces": "Site 4 (Bankhead) ranked next and runs slightly hotter, but fewer of its households lack a car (21%), so it serves fewer people who can't get to relief on their own [P1]. Funding these three uses [share] of [budget line]."
+    },
+    "limitations": [
+      "Heat offsets come from a single campaign day of street readings.",
+      "Distances are straight-line, not walking routes.",
+      "Costs are placeholders pending city figures.",
+      "The model predicts heat exposure, not health outcomes.",
+      "Seven years of station history show variability, not a long-term trend.",
+      "Race was never a model input; it appears only in the equity audit."
+    ],
+    "model_version": "offset_model_v1",
+    "generated_at": "2026-10-27T18:00:00Z"
+  },
+  "narrative": "Funding **3 centers** reaches the most residents who are exposed and least able to leave [P1]. Ranked by heat offset × days ≥95°F × residents nearby without a car or 65+ [P1][P3].",
+  "citations": [
+    {"provenance_id": "P1", "tool_name": "rank_candidate_sites", "mcp_tool_name": "rank_sites_pool", "source_type": "mcp_toolbox", "sql_object": "a4i_ml.grid_predictions (sql/serve/rank_sites.sql)", "parameters": {"k": 10, "min_spacing_m": 2000}, "model_version": "offset_model_v1", "timestamp_utc": "2026-10-27T18:00:00Z", "row_count": 10, "latency_ms": 940},
+    {"provenance_id": "P2", "tool_name": "rank_candidate_sites", "mcp_tool_name": "vulnerable_population", "source_type": "mcp_toolbox", "sql_object": "a4i_semantic.vulnerable_population", "parameters": {"radius_m": 800}, "model_version": null, "timestamp_utc": "2026-10-27T18:00:01Z", "row_count": 3, "latency_ms": 610},
+    {"provenance_id": "P3", "tool_name": "rank_candidate_sites", "mcp_tool_name": "site_hot_days", "source_type": "mcp_toolbox", "sql_object": "a4i_semantic.site_hot_days", "parameters": {}, "model_version": null, "timestamp_utc": "2026-10-27T18:00:01Z", "row_count": 3, "latency_ms": 420},
+    {"provenance_id": "P4", "tool_name": "run_equity_audit", "mcp_tool_name": "equity_audit", "source_type": "mcp_toolbox", "sql_object": "sql/audit/audit.sql", "parameters": {"geo_id_1": "13121007603", "geo_id_2": "13121004200", "geo_id_3": "13121004800"}, "model_version": null, "timestamp_utc": "2026-10-27T18:00:02Z", "row_count": 1, "latency_ms": 700}
+  ],
+  "verification": {"passed": true, "retries": 0, "fallback_used": false},
+  "total_latency_ms": 4820
+}
