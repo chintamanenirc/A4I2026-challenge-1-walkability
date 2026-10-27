@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { SiteData, CityBaseline } from "./types";
-import { Check, Copy, RefreshCw } from "lucide-react";
+import { Check, Copy, RefreshCw, Download, Printer, UserCheck } from "lucide-react";
 
 interface ProposalTabProps {
   sites: SiteData[];
@@ -28,6 +28,8 @@ export const ProposalTab: React.FC<ProposalTabProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [financeConfirmed, setFinanceConfirmed] = useState(false);
+  const [plannerName, setPlannerName] = useState("");
+  const [plannerNotes, setPlannerNotes] = useState("");
 
   const fundedSites = sites.slice(0, centersToFund);
   const site1 = fundedSites[0] || sites[0];
@@ -41,8 +43,12 @@ export const ProposalTab: React.FC<ProposalTabProps> = ({
   );
   const minOffset = Math.min(...fundedSites.map((s) => s.offsetF)).toFixed(1);
   const maxOffset = Math.max(...fundedSites.map((s) => s.offsetF)).toFixed(1);
-  const minHotDays = Math.min(...fundedSites.map((s) => s.hotDaysPerSummer ?? 35));
-  const maxHotDays = Math.max(...fundedSites.map((s) => s.hotDaysPerSummer ?? 42));
+  const minHotDays = Math.min(
+    ...fundedSites.map((s) => s.hotDaysPerSummer ?? 35)
+  );
+  const maxHotDays = Math.max(
+    ...fundedSites.map((s) => s.hotDaysPerSummer ?? 42)
+  );
 
   const avgIncome = Math.round(
     fundedSites.reduce((acc, s) => acc + s.medianIncome, 0) / fundedSites.length
@@ -57,37 +63,52 @@ export const ProposalTab: React.FC<ProposalTabProps> = ({
     fundedSites.reduce((acc, s) => acc + s.seniorsPct, 0) / fundedSites.length
   ).toFixed(1);
 
-  const handleCopyText = () => {
-    const text = `PROPOSAL TO COUNCIL · DRAFT
-Three permanent cooling centers, sited where heat hurts most
+  const buildPlainTextMemo = () => {
+    return `# PROPOSAL TO COUNCIL · ${financeConfirmed ? "APPROVED FOR SUBMISSION" : "DRAFT"}
+## ${fundedSites.length} permanent cooling ${fundedSites.length === 1 ? "center" : "centers"}, sited where heat hurts most
 
-To: Atlanta City Council
-From: Mayor's Office of Sustainability & Resilience
-Date: October 27, 2026
+- **To**: Atlanta City Council
+- **From**: Mayor's Office of Sustainability & Resilience${plannerName.trim() ? ` (Signed: ${plannerName.trim()})` : ""}
+- **Date**: October 27, 2026
 
-Recommendation (BQML · Station history · ACS):
-We recommend permanent cooling centers at ${site1.name}, ${site2.name} and ${site3.name}. Together they place relief within 0.5 miles (straight-line) of ${totalReached.toLocaleString()} residents who lack a car or are 65 and older, in tracts that run +${minOffset}–${maxOffset}°F hotter than Atlanta’s average and see roughly ${minHotDays}–${maxHotDays} days at or above 95°F each summer.
+### Recommendation (BQML · Station history · ACS)
+We recommend permanent cooling centers at ${fundedSites.map((s) => s.name).join(", ")}. Together they place relief within 0.5 miles (straight-line) of ${totalReached.toLocaleString()} residents who lack a car or are 65 and older, in tracts that run +${minOffset}–${maxOffset}°F hotter than Atlanta’s average and see roughly ${minHotDays}–${maxHotDays} days at or above 95°F each summer.
 
-The three sites:
+### The recommended sites
 ${fundedSites
   .map(
     (s) =>
-      `- ${s.id} · ${s.name}: [${s.lat.toFixed(3)}, ${s.lng.toFixed(3)}], +${s.offsetF.toFixed(1)}°F, ${s.hotDaysPerSummer} days, ${s.residentsReached.toLocaleString()} (${s.noCarPct}% · ${s.seniorsPct}%), ${s.estAnnualCost}`
+      `- Site ${s.id} · ${s.name}: [${s.lat.toFixed(3)}, ${(s.lon ?? s.lng).toFixed(3)}], +${s.offsetF.toFixed(1)}°F, ${s.hotDaysPerSummer} days ≥95°F, ${s.residentsReached.toLocaleString()} reached (${s.noCarPct}% no car · ${s.seniorsPct}% 65+), ${s.estAnnualCost}/yr`
   )
   .join("\n")}
 
-Why these three (EXPLAIN_PREDICT):
+### Why these sites (EXPLAIN_PREDICT)
 Site 1 (${site1.name}) runs hot mainly because of ${site1.dominantDriver.toLowerCase()} (+${site1.drivers[0]?.attributionF.toFixed(1)}°F); Site 2 (${site2.name}) is driven by ${site2.dominantDriver.toLowerCase()} (+${site2.drivers[0]?.attributionF.toFixed(1)}°F); Site 3 (${site3.name}) is driven by ${site3.dominantDriver.toLowerCase()} (+${site3.drivers[0]?.attributionF.toFixed(1)}°F). Sites were chosen so each one reaches residents the others miss.
 
-What this displaces:
-${site4.name} ranked next (+${site4.offsetF.toFixed(1)}°F) and was not chosen because its tract has lower car-free vulnerability (${site4.noCarPct}% vs. ${avgNoCar}% at funded sites) and partial catchment overlap. Funding these three uses $540,000 (90%) of the $600,000 FY26 cooling resilience allocation.
+### What this displaces
+${site4.name} ranked next (+${site4.offsetF.toFixed(1)}°F) and was not chosen because its tract has lower car-free vulnerability (${site4.noCarPct}% vs. ${avgNoCar}% at funded sites) and partial catchment overlap. Funding these ${fundedSites.length} uses $${(fundedSites.length * 180000).toLocaleString()} of the $600,000 FY26 cooling resilience allocation.
 
-Equity check (Audit):
+### Equity check (Audit)
 Recommended tracts average $${avgIncome.toLocaleString()} median household income (vs. $${cityBaseline.medianIncome.toLocaleString()} Atlanta average), ${avgPoverty}% poverty (vs. ${cityBaseline.povertyRate.toFixed(1)}%), ${avgNoCar}% households without a car (vs. ${cityBaseline.noCarPct.toFixed(1)}%), and ${avgSeniors}% seniors 65+ (vs. ${cityBaseline.seniorsPct.toFixed(1)}%).
-`;
-    navigator.clipboard.writeText(text);
+${plannerNotes.trim() ? `\n### Planner Amendment Notes\n${plannerNotes.trim()}\n` : ""}`;
+  };
+
+  const handleCopyText = () => {
+    navigator.clipboard.writeText(buildPlainTextMemo());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDownloadMarkdown = () => {
+    const blob = new Blob([buildPlainTextMemo()], {
+      type: "text/markdown;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `atlanta-cooling-centers-council-memo.md`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleExportPDF = () => {
@@ -96,7 +117,7 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
 
   return (
     <div className="w-full flex flex-col gap-6">
-      {/* Top Notification & Progress Bar Banner matching Screenshot 4 */}
+      {/* Top Notification & Progress Bar Banner */}
       <div className="bg-[#0d1422] border border-slate-800/90 rounded-2xl p-5 shadow-xl flex flex-col gap-3.5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 text-xs sm:text-sm text-slate-100">
@@ -104,19 +125,25 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
               <Check className="w-2.5 h-2.5 stroke-[3]" />
             </div>
             <span className="font-bold">
-              Draft ready · every claim sourced · review before sending
+              {financeConfirmed
+                ? `Council packet 100% ready · Signed off by ${
+                    plannerName.trim() || "Senior Planner"
+                  }`
+                : "Draft ready · every claim sourced · review before sending"}
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5 self-end sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
             <button
               type="button"
               onClick={onRegenerate}
               disabled={isRegenerating}
-              className="px-4 py-2 rounded-xl border border-slate-700 bg-[#111827] hover:bg-slate-800 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
+              className="px-3.5 py-2 rounded-xl border border-slate-700 bg-[#111827] hover:bg-slate-800 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
             >
               <RefreshCw
-                className={`w-3.5 h-3.5 ${isRegenerating ? "animate-spin text-[#f97316]" : ""}`}
+                className={`w-3.5 h-3.5 ${
+                  isRegenerating ? "animate-spin text-[#f97316]" : ""
+                }`}
               />
               <span>{isRegenerating ? "Drafting..." : "Regenerate"}</span>
             </button>
@@ -124,7 +151,7 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
             <button
               type="button"
               onClick={handleCopyText}
-              className="px-4 py-2 rounded-xl border border-slate-700 bg-[#111827] hover:bg-slate-800 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
+              className="px-3.5 py-2 rounded-xl border border-slate-700 bg-[#111827] hover:bg-slate-800 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
             >
               <Copy className="w-3.5 h-3.5" />
               <span>{copied ? "Copied!" : "Copy text"}</span>
@@ -132,18 +159,30 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
 
             <button
               type="button"
-              onClick={handleExportPDF}
-              className="px-4 py-2 rounded-xl bg-[#f97316] hover:bg-orange-400 text-[#090d16] text-xs font-bold shadow-md transition-all"
+              onClick={handleDownloadMarkdown}
+              className="px-3.5 py-2 rounded-xl border border-slate-700 bg-[#111827] hover:bg-slate-800 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
             >
-              Export PDF
+              <Download className="w-3.5 h-3.5" />
+              <span>Download .md</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportPDF}
+              className="px-4 py-2 rounded-xl bg-[#f97316] hover:bg-orange-400 text-[#090d16] text-xs font-extrabold flex items-center gap-1.5 shadow-md transition-all"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Export PDF</span>
             </button>
           </div>
         </div>
 
-        {/* Full-width Orange Progress Bar across bottom of banner matching Screenshot 4 */}
+        {/* Full-width Orange/Emerald Progress Bar across bottom of banner */}
         <div className="w-full h-1.5 rounded-full bg-slate-800/90 overflow-hidden">
           <div
-            className="h-full rounded-full bg-[#f97316] transition-all duration-300"
+            className={`h-full rounded-full transition-all duration-300 ${
+              financeConfirmed ? "bg-emerald-500" : "bg-[#f97316]"
+            }`}
             style={{ width: financeConfirmed ? "100%" : "84%" }}
           />
         </div>
@@ -155,8 +194,16 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
         <div className="lg:col-span-9 bg-[#fbfaf8] text-slate-900 rounded-2xl p-8 sm:p-10 shadow-2xl border border-slate-300 font-sans space-y-6">
           {/* Header */}
           <div className="space-y-1.5">
-            <div className="text-[11px] font-mono font-bold tracking-widest text-[#c2410c] uppercase">
-              PROPOSAL TO COUNCIL · DRAFT
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-mono font-bold tracking-widest text-[#c2410c] uppercase">
+                PROPOSAL TO COUNCIL ·{" "}
+                {financeConfirmed ? "SIGNED & VERIFIED" : "DRAFT"}
+              </div>
+              {financeConfirmed && (
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-bold">
+                  READY FOR SUBMISSION
+                </span>
+              )}
             </div>
             <h2 className="text-2xl sm:text-[26px] font-extrabold text-slate-950 tracking-tight leading-snug">
               Three permanent cooling centers, sited where heat hurts most
@@ -177,6 +224,7 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
             </div>
             <div className="col-span-10 sm:col-span-11 text-slate-900 font-medium pl-2">
               Mayor’s Office of Sustainability &amp; Resilience
+              {plannerName.trim() ? ` · Reviewed by ${plannerName.trim()}` : ""}
             </div>
 
             <div className="col-span-2 sm:col-span-1 text-slate-500 font-medium">
@@ -228,8 +276,8 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
             </p>
 
             {agentProposalNote && (
-              <div className="p-3 rounded-lg bg-orange-50 border border-orange-200 text-xs text-slate-800 leading-relaxed">
-                <span className="font-mono font-bold text-[#c2410c] uppercase text-[10px] block mb-0.5">
+              <div className="p-3.5 rounded-lg bg-orange-50 border border-orange-200 text-xs text-slate-800 leading-relaxed">
+                <span className="font-mono font-bold text-[#c2410c] uppercase text-[10px] block mb-1">
                   Gemini Live Synthesis Note
                 </span>
                 {agentProposalNote}
@@ -237,7 +285,7 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
             )}
           </div>
 
-          {/* Section 2: Table - The three sites (with Solid Dark Navy Header Row matching Screenshot 4) */}
+          {/* Section 2: Table - The three sites */}
           <div className="space-y-2.5 pt-1">
             <h3 className="text-sm font-extrabold text-slate-950">
               The three sites
@@ -266,7 +314,8 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
                         {site.id} · {site.name}
                       </td>
                       <td className="py-3 px-3.5 text-slate-600 font-mono text-[11px]">
-                        [{site.lat.toFixed(3)}, {site.lng.toFixed(3)}]
+                        [{site.lat.toFixed(3)},{" "}
+                        {(site.lon ?? site.lng).toFixed(3)}]
                       </td>
                       <td className="py-3 px-3.5 font-mono font-bold text-[#c2410c]">
                         +{site.offsetF.toFixed(1)}°F
@@ -275,8 +324,8 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
                         {site.hotDaysPerSummer}
                       </td>
                       <td className="py-3 px-3.5 font-mono text-slate-800">
-                        {site.residentsReached.toLocaleString()} ({site.noCarPct}%
-                        · {site.seniorsPct}%)
+                        {site.residentsReached.toLocaleString()} (
+                        {site.noCarPct}% · {site.seniorsPct}%)
                       </td>
                       <td className="py-3 px-3.5 text-right font-mono text-slate-800">
                         {site.estAnnualCost}
@@ -341,13 +390,25 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
               Across all 4 audit measures, the recommended tracts skew toward
               higher need than the Atlanta average: median household income is $
               {avgIncome.toLocaleString()} (vs. $
-              {cityBaseline.medianIncome.toLocaleString()} citywide), poverty rate
-              is {avgPoverty}% (vs. {cityBaseline.povertyRate.toFixed(1)}%),
-              car-free households are {avgNoCar}% (vs.{" "}
+              {cityBaseline.medianIncome.toLocaleString()} citywide), poverty
+              rate is {avgPoverty}% (vs. {cityBaseline.povertyRate.toFixed(1)}
+              %), car-free households are {avgNoCar}% (vs.{" "}
               {cityBaseline.noCarPct.toFixed(1)}%), and residents 65+ are{" "}
               {avgSeniors}% (vs. {cityBaseline.seniorsPct.toFixed(1)}%).
             </p>
           </div>
+
+          {/* Optional Planner Notes */}
+          {plannerNotes.trim() && (
+            <div className="bg-slate-100 border-l-4 border-slate-800 rounded-r-xl p-4 space-y-1">
+              <div className="text-xs font-extrabold text-slate-900">
+                Planner Review &amp; Implementation Notes
+              </div>
+              <p className="text-[13px] text-slate-800 leading-relaxed">
+                {plannerNotes}
+              </p>
+            </div>
+          )}
 
           {/* Section 6: Limits of this analysis */}
           <div className="space-y-2 pt-1">
@@ -368,11 +429,16 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
         {/* Right Column (3 cols): Ready for council? + Human in the loop inside unified card */}
         <div className="lg:col-span-3 bg-[#0d1422] border border-slate-800/90 rounded-2xl p-6 shadow-xl flex flex-col gap-6">
           <div className="space-y-4">
-            <h3 className="text-sm font-extrabold text-slate-100">
-              Ready for council?
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-slate-100">
+                Ready for council?
+              </h3>
+              <span className="text-xs font-mono font-bold text-[#f97316]">
+                {financeConfirmed ? "6 / 6" : "5 / 6"}
+              </span>
+            </div>
 
-            {/* 2-Line Checklist Items matching Screenshot 4 */}
+            {/* 2-Line Checklist Items */}
             <div className="flex flex-col gap-3.5 text-xs">
               <div className="flex items-start gap-3">
                 <div className="w-4 h-4 rounded-full bg-emerald-950 border border-emerald-500/60 flex items-center justify-center text-emerald-400 mt-0.5 shrink-0">
@@ -469,22 +535,56 @@ Recommended tracts average $${avgIncome.toLocaleString()} median household incom
                       financeConfirmed ? "text-emerald-400" : "text-slate-400"
                     }`}
                   >
-                    {financeConfirmed ? "confirmed by planner" : "needs a person"}
+                    {financeConfirmed
+                      ? "confirmed by planner"
+                      : "needs a person (click to confirm)"}
                   </div>
                 </div>
               </button>
             </div>
           </div>
 
-          {/* Human in the loop section inside the right column card matching Screenshot 4 */}
-          <div className="border-t border-slate-800/90 pt-5 space-y-2">
-            <h3 className="text-sm font-extrabold text-slate-100">
-              Human in the loop
-            </h3>
+          {/* Human in the loop interactive sign-off section */}
+          <div className="border-t border-slate-800/90 pt-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-[#f97316]" />
+              <h3 className="text-sm font-extrabold text-slate-100">
+                Human in the loop
+              </h3>
+            </div>
             <p className="text-xs text-slate-400 leading-relaxed">
               The agent drafts; a planner reviews, edits and signs. Nothing goes
               to council without a person’s name on it.
             </p>
+
+            <div className="space-y-2 pt-1">
+              <label className="block text-[11px] font-mono text-slate-400">
+                Planner Sign-Off Name
+              </label>
+              <input
+                type="text"
+                value={plannerName}
+                onChange={(e) => {
+                  setPlannerName(e.target.value);
+                  if (e.target.value.trim()) setFinanceConfirmed(true);
+                }}
+                placeholder="e.g. J. Carter, Chief Resilience Officer"
+                className="w-full bg-[#090d16] border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#f97316]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-[11px] font-mono text-slate-400">
+                Add Amendment / Field Note
+              </label>
+              <textarea
+                rows={2}
+                value={plannerNotes}
+                onChange={(e) => setPlannerNotes(e.target.value)}
+                placeholder="Optional note appended to council memo..."
+                className="w-full bg-[#090d16] border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-[#f97316]"
+              />
+            </div>
           </div>
         </div>
       </div>
