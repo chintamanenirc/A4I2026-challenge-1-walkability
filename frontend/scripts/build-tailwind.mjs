@@ -16,6 +16,8 @@ async function buildTailwind() {
     sources: [
       { base: path.join(rootDir, "app"), pattern: "**/*", negated: false },
       { base: path.join(rootDir, "components"), pattern: "**/*", negated: false },
+      { base: path.join(rootDir, "lib"), pattern: "**/*", negated: false },
+      { base: path.join(rootDir, "src"), pattern: "**/*", negated: false },
     ],
   });
 

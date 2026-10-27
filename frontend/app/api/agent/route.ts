@@ -258,12 +258,66 @@ function parseStructuredAgentEvents(events: any[]): {
           });
         }
 
-        // 4. audit_equity
-        else if (toolName === "audit_equity") {
+        // 4. assemble_placement_recommendation (Stage 2 heat_planner orchestrator output)
+        else if (toolName === "assemble_placement_recommendation") {
+          const rec = res?.recommendation || res?.data_result?.recommendation;
+          const rawSites: any[] = [
+            ...(Array.isArray(rec?.sites) ? rec.sites : Array.isArray(res?.data_result?.sites) ? res.data_result.sites : []),
+            ...(Array.isArray(rec?.runner_up_sites)
+              ? rec.runner_up_sites
+              : Array.isArray(res?.data_result?.runner_up_sites)
+              ? res.data_result.runner_up_sites
+              : []),
+          ];
+          const toPct = (v: any) =>
+            typeof v === "number" ? (v <= 1 && v >= 0 ? +(v * 100).toFixed(1) : +v.toFixed(1)) : undefined;
+
+          rawSites.forEach((item: any, idx: number) => {
+            if (!item || item.error) return;
+            const drivers = parseKeyHeatDrivers(item.drivers);
+            const demo = item.demographics || {};
+            const catchm = item.catchment || {};
+            const hot = item.hot_days || {};
+            sites.push({
+              rank: item.rank || idx + 1,
+              censusTractId: item.geo_id || item.census_tract_id,
+              neighborhood: item.neighborhood || item.address_hint,
+              facilitySite: item.point_id || item.site_id,
+              lat: typeof item.lat === "number" ? item.lat : 33.749,
+              lon: typeof item.lon === "number" ? item.lon : -84.388,
+              predictedOffsetF: item.predicted_offset_f,
+              score: item.priority_score,
+              drivers,
+              demographics: {
+                povertyRatePct: toPct(demo.poverty_rate ?? item.tract_poverty_rate),
+                noVehicleRatePct: toPct(demo.no_vehicle_rate ?? item.tract_no_vehicle_rate),
+                seniorsPct: toPct(demo.share_65_plus ?? item.tract_share_65_plus),
+                carFreeHouseholds: demo.car_free_households ?? catchm.car_free_households_within_radius,
+                medianIncome: demo.median_income,
+                totalPop: demo.total_pop ?? catchm.population_within_radius,
+                walkShedPop: catchm.population_within_radius ?? demo.total_pop,
+                hotDaysPerYr: hot.expected_days_ge_95f_equiv ?? hot.mean_days_ge_95f_equiv_per_yr,
+              },
+              why: item.why_here || item.why || item.passed_over_reason,
+              googleMapsLink: item.google_maps_url,
+              walkingDirectionsLink: item.google_maps_walking_url,
+            });
+          });
+
+          if (rec?.equity_audit || res?.data_result?.equity_audit) {
+            equityAudit = rec?.equity_audit || res?.data_result?.equity_audit;
+          }
+          if (rec?.heat_frequency || res?.data_result?.heat_frequency) {
+            heatFrequency = rec?.heat_frequency || res?.data_result?.heat_frequency;
+          }
+        }
+
+        // 5. audit_equity
+        else if (toolName === "audit_equity" || toolName === "run_equity_audit") {
           equityAudit = res?.result || res;
         }
 
-        // 5. analyze_heat_frequency or get_heat_frequency
+        // 6. analyze_heat_frequency or get_heat_frequency
         else if (toolName === "analyze_heat_frequency" || toolName === "get_heat_frequency") {
           heatFrequency = res?.result || res;
         }
