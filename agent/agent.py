@@ -1,12 +1,38 @@
+import logging
+import os
+
 from google.adk.agents.llm_agent import Agent
 from .tools import (
     predict_heat_offset,
     rank_candidate_sites,
+    select_cooling_center_sites,
     analyze_heat_frequency,
     audit_equity,
     geocode_address,
     reverse_geocode_location,
 )
+
+logger = logging.getLogger(__name__)
+
+
+def _toolbox_tools():
+    """Managed MCP server: MCP Toolbox for Databases on Cloud Run (TOOLBOX_URL).
+
+    The Toolbox service is private (--no-allow-unauthenticated), so on Cloud Run the
+    agent calls it with its own service-account identity token.
+    """
+    url = os.getenv("TOOLBOX_URL")
+    if not url:
+        logger.warning("TOOLBOX_URL not set; running without MCP Toolbox tools.")
+        return []
+    try:
+        from google.adk.tools.toolbox_toolset import ToolboxToolset
+        from toolbox_adk import CredentialStrategy
+    except ImportError:
+        logger.warning("TOOLBOX_URL is set but toolbox support isn't installed: pip install 'google-adk[toolbox]'")
+        return []
+    creds = None if url.startswith("http://") else CredentialStrategy.workload_identity(target_audience=url)
+    return [ToolboxToolset(server_url=url, toolset_name=os.getenv("TOOLBOX_TOOLSET", "heat-planner"), credentials=creds)]
 
 CLIMATE_MODELER_INSTRUCTION = """You are the Climate & Microclimate Modeling Specialist for the City of Atlanta.
 Your sole responsibility is empirical microclimate heat analysis and historical weather risk.
@@ -36,9 +62,13 @@ EQUITY_AUDITOR_INSTRUCTION = """You are the Municipal Equity & Social Vulnerabil
 Your sole responsibility is verifying that municipal heat resilience investments prioritize the most vulnerable communities (carless households, seniors, low-income residents) and ensuring capital expenditures are defensible against council scrutiny.
 
 Your capabilities:
-1. `rank_candidate_sites(limit)`: Runs spatial prioritization across Atlanta census tracts, weighting predicted heat offset by non-vehicle ownership, poverty rates, and senior populations.
+1. `select_cooling_center_sites(count)`: Picks `count` permanent sites that don't overlap in reach (straight-line spacing) and explains why runners-up were passed over. Use this for "where should the centers go". The planner UI uses the same function, so the map and your answer always agree.
+   `rank_candidate_sites(limit)`: The raw ranking (heat offset weighted by no-vehicle, poverty and older residents), for browsing only.
 2. `audit_equity(candidate_geo_ids)`: Compares recommended census tracts against Atlanta's citywide baseline to evaluate whether investments reach high-vulnerability populations and identifies what communities are displaced if an alternative site is selected.
 
+3. MCP Toolbox tools (when available) for tract profiles, vulnerable population within a radius, and hot-day counts.
+
+Report the audit honestly either way: if sites skew away from need, that is a finding.
 Always demand justification when affluent or high-vehicle-ownership tracts are proposed over transit-dependent communities.
 """
 
@@ -48,8 +78,10 @@ equity_auditor_agent = Agent(
     description='Specialized sub-agent that audits candidate sites against demographic baselines (carlessness, poverty, age) and evaluates displacement tradeoffs.',
     instruction=EQUITY_AUDITOR_INSTRUCTION,
     tools=[
+        select_cooling_center_sites,
         rank_candidate_sites,
         audit_equity,
+        *_toolbox_tools(),
     ],
 )
 
@@ -67,6 +99,12 @@ Your Mission:
   2. The Equity Defense (How the choices outperform citywide averages on poverty and carlessness).
   3. The Tradeoff / Council Scrutiny Response (Answering "Why not Site 4?" by explaining what choosing Site 1 or 2 displaced).
 - Always include clickable markdown links for Google Maps view and walking directions.
+
+Ground rules:
+- A heat offset is how much hotter a spot ran than Atlanta's average on one campaign day. Never call it a forecast temperature.
+- Distances are straight-line, not walking routes. Costs are not in the data: use [COST] placeholders unless the planner gives figures.
+- Only Atlanta is loaded. If asked about another city, say its data isn't loaded and don't estimate.
+- Never invent coordinates, offsets or counts. If a tool fails, say what you couldn't get and what the planner can do instead.
 """
 
 root_agent = Agent(
