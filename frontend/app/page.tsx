@@ -1,727 +1,304 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
-import MapViewer, { LocationPoint } from "@/components/MapViewer";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import {
-  Send,
-  Sparkles,
-  MapPin,
-  Bot,
-  User,
-  Flame,
-  Loader2,
-  Trash2,
-  HelpCircle,
-  ExternalLink,
-  ChevronRight,
-  TrendingUp,
-  Scale,
-  Navigation,
-  Info,
-} from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Navbar } from "../components/Navbar";
+import { AskTab } from "../components/AskTab";
+import { SitesTab } from "../components/SitesTab";
+import { EquityAuditTab } from "../components/EquityAuditTab";
+import { ProposalTab } from "../components/ProposalTab";
+import { CompareModal } from "../components/CompareModal";
+import { SiteData, CityBaseline } from "../components/types";
 
-interface ComparisonResult {
-  agent1: {
-    id: string;
-    name: string;
-    response: string;
-    coordinates?: LocationPoint[];
-    latencyMs?: number;
-    error?: string;
-  };
-  agent2: {
-    id: string;
-    name: string;
-    response: string;
-    coordinates?: LocationPoint[];
-    latencyMs?: number;
-    error?: string;
-  };
-}
-
-interface Message {
-  id: string;
-  sender: "user" | "agent";
-  text: string;
-  timestamp: string;
-  coordinates?: LocationPoint[];
-  comparison?: ComparisonResult;
-}
-
-const CATEGORIZED_PRESETS = [
+// Default Atlanta sites matching BigQuery semantic layer & BQML model
+const INITIAL_SITES: SiteData[] = [
   {
-    category: "Side-by-Side Head-to-Head",
-    icon: Sparkles,
-    title: "Compare Top 3 Hot Tracts",
-    mode: "compare",
-    prompt:
-      "Rank the top 3 high-heat risk census tracts in Atlanta, explain the primary drivers, and provide demographic and coordinates.",
+    id: 1,
+    name: "Thomasville",
+    tractId: "13121006802",
+    lat: 33.7043,
+    lon: -84.3610,
+    offsetF: 4.1,
+    daysAbove95: 18,
+    residentsReached: 14200,
+    annualCost: "$185,000",
+    dominantDriver: "Impervious surface",
+    dominantDiagnosis: "Mostly pavement. Shade structures and cool pavement around the site target the cause. We can diagnose the cause; we can’t simulate the fix.",
+    drivers: [
+      { feature: "impervious_surface", attributionF: 2.1 },
+      { feature: "street_density", attributionF: 1.4 },
+      { feature: "land_use_mix", attributionF: 0.9 },
+      { feature: "park_proximity", attributionF: -0.3 },
+    ],
+    demographics: {
+      noVehiclePct: 24.6,
+      age65PlusPct: 17.8,
+      povertyRatePct: 32.1,
+      medianIncome: 38400,
+      totalPop: 3410,
+    },
+    funded: true,
   },
   {
-    category: "Atlanta BQML Explainer (Agent 2)",
-    icon: Scale,
-    title: "Explain Tract 13121006200 Drivers",
-    agentId: "atlanta_heat_agent",
-    mode: "single",
-    prompt:
-      "Why is tract 13121006200 predicted to run hot? Break down all its BigQuery ML feature attributions.",
+    id: 2,
+    name: "Peoplestown",
+    tractId: "13121006200",
+    lat: 33.7285,
+    lon: -84.3850,
+    offsetF: 3.7,
+    daysAbove95: 18,
+    residentsReached: 12800,
+    annualCost: "$175,000",
+    dominantDriver: "Street density",
+    dominantDiagnosis: "Commercial corridor with high street thermal mass and low reflectivity. Transit-connected hub recommended for shaded waiting structures.",
+    drivers: [
+      { feature: "street_density", attributionF: 1.8 },
+      { feature: "impervious_surface", attributionF: 1.5 },
+      { feature: "land_use_mix", attributionF: 0.7 },
+      { feature: "park_proximity", attributionF: -0.3 },
+    ],
+    demographics: {
+      noVehiclePct: 21.4,
+      age65PlusPct: 16.2,
+      povertyRatePct: 28.4,
+      medianIncome: 42100,
+      totalPop: 2025,
+    },
+    funded: true,
   },
   {
-    category: "Cooling Center Siting (Agent 1)",
-    icon: Flame,
-    title: "Atlanta 3 Centers Multi-Factor",
-    agentId: "urban_heat_agent",
-    mode: "single",
-    prompt:
-      "We have funding for 3 cooling centers in Atlanta this summer. Where should they go to maximize equity and mitigate extreme heat?",
+    id: 3,
+    name: "Mechanicsville",
+    tractId: "13121005800",
+    lat: 33.7380,
+    lon: -84.4020,
+    offsetF: 3.2,
+    daysAbove95: 17,
+    residentsReached: 11400,
+    annualCost: "$160,000",
+    dominantDriver: "Land-use mix",
+    dominantDiagnosis: "High industrial footprint and lack of vegetative buffer adjacent to residential blocks. High transit dependence among senior residents.",
+    drivers: [
+      { feature: "land_use_mix", attributionF: 1.6 },
+      { feature: "impervious_surface", attributionF: 1.3 },
+      { feature: "street_density", attributionF: 0.8 },
+      { feature: "park_proximity", attributionF: -0.5 },
+    ],
+    demographics: {
+      noVehiclePct: 28.9,
+      age65PlusPct: 14.5,
+      povertyRatePct: 34.8,
+      medianIncome: 33900,
+      totalPop: 2890,
+    },
+    funded: true,
   },
   {
-    category: "Geocoding & Walkability",
-    icon: Navigation,
-    title: "10th St NE Heat Risk & Walk Route",
-    agentId: "urban_heat_agent",
-    mode: "single",
-    prompt:
-      "What is the microclimate heat risk at 10th St NE, Atlanta? Provide Google Maps links for site inspection.",
+    id: 4,
+    name: "Bankhead",
+    tractId: "13121002400",
+    lat: 33.7540,
+    lon: -84.4320,
+    offsetF: 3.0,
+    daysAbove95: 16,
+    residentsReached: 9600,
+    annualCost: "$155,000",
+    dominantDriver: "Impervious surface",
+    dominantDiagnosis: "Overlaps within the 1-mile transit radius of higher-priority Westside tracts with greater overall demographic vulnerability.",
+    drivers: [
+      { feature: "impervious_surface", attributionF: 1.4 },
+      { feature: "street_density", attributionF: 1.1 },
+      { feature: "land_use_mix", attributionF: 0.8 },
+      { feature: "park_proximity", attributionF: -0.3 },
+    ],
+    demographics: {
+      noVehiclePct: 16.2,
+      age65PlusPct: 11.8,
+      povertyRatePct: 19.2,
+      medianIncome: 54200,
+      totalPop: 2450,
+    },
+    whyNotChosen: "Bankhead ranked 4th. Each pick must reach people the earlier picks missed. Overlaps within the service buffer of higher-need priority tracts.",
+    funded: false,
+  },
+  {
+    id: 5,
+    name: "Lakewood Heights",
+    tractId: "13121006500",
+    lat: 33.6980,
+    lon: -84.3910,
+    offsetF: 2.8,
+    daysAbove95: 16,
+    residentsReached: 8200,
+    annualCost: "$150,000",
+    dominantDriver: "Street density",
+    dominantDiagnosis: "Southern fringe residential area with moderate tree canopy coverage.",
+    drivers: [
+      { feature: "street_density", attributionF: 1.2 },
+      { feature: "impervious_surface", attributionF: 1.0 },
+      { feature: "land_use_mix", attributionF: 0.9 },
+      { feature: "park_proximity", attributionF: -0.3 },
+    ],
+    demographics: {
+      noVehiclePct: 17.5,
+      age65PlusPct: 12.1,
+      povertyRatePct: 22.4,
+      medianIncome: 49000,
+      totalPop: 2100,
+    },
+    funded: false,
   },
 ];
 
-export default function UrbanHeatPlannerPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      sender: "agent",
-      text: `### 👋 Welcome to Urban Heat Resilience Studio
-Compare **Agent 1 (Urban Heat Planner)** and **Agent 2 (Atlanta BQML Explainer)** side-by-side or query either individually.
+export default function Home() {
+  const [activeTab, setActiveTab] = useState<"ask" | "sites" | "equity" | "proposal">("ask");
+  const [sites, setSites] = useState<SiteData[]>(INITIAL_SITES);
+  const [selectedSiteId, setSelectedSiteId] = useState<number>(1);
+  const [centersToFund, setCentersToFund] = useState<number>(3);
+  const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [isLoadingMessage, setIsLoadingMessage] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
-* ⚖️ **Side-by-Side Mode**: Ask a question to both agents simultaneously and evaluate their recommendations in parallel.
-* 📍 **Agent 1 (Planner)**: Multi-criteria prioritization (heat offset + poverty + transit access + population).
-* 🔬 **Agent 2 (Explainer)**: Direct BigQuery \`ML.EXPLAIN_PREDICT\` feature attributions and microclimate variance.
-* 🗺️ **Google Maps Spatial Inspector**: Live synchronization with coordinate badges and walking routes!`,
-      timestamp: "Ready",
-      coordinates: [{ lat: 33.7043, lon: -84.361, label: "Atlanta High-Need Tract (Thomasville)" }],
-    },
-  ]);
-
-  const [inputPrompt, setInputPrompt] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [isCompareMode, setIsCompareMode] = useState(true);
-  const [activeAgent, setActiveAgent] = useState<"urban_heat_agent" | "atlanta_heat_agent">("urban_heat_agent");
-  const [selectedLocation, setSelectedLocation] = useState<LocationPoint>({
-    lat: 33.7285,
-    lon: -84.4217,
-    label: "Agent 2: Tract 13121006200 (+3.19°F)",
-    predictedOffsetF: 3.19,
-    tractId: "13121006200",
-    drivers: [
-      { feature: "latitude", attributionF: 2.03 },
-      { feature: "longitude", attributionF: 0.63 },
-      { feature: "poverty_rate", attributionF: 0.45 },
-      { feature: "tree_canopy", attributionF: -0.80 },
-    ],
-    demographics: {
-      povertyRatePct: 18.4,
-      noVehicleRatePct: 18.1,
-      medianAge: 28.5,
-      totalPop: 2025,
-    },
-    why: "Tract 13121006200 running hot with prominent built-environment and thermal elevation drivers.",
-    agentId: "atlanta_heat_agent",
-    agentLabel: "Agent 2",
+  const [cityBaseline, setCityBaseline] = useState<CityBaseline>({
+    totalPop: 1447970,
+    povertyRatePct: 13.9,
+    noVehiclePct: 8.2,
+    age65PlusPct: 12.5,
+    medianIncome: 75714,
   });
-  const [allLocations, setAllLocations] = useState<LocationPoint[]>([
-    {
-      lat: 33.7285,
-      lon: -84.4217,
-      label: "Agent 2: Tract 13121006200 (+3.19°F)",
-      predictedOffsetF: 3.19,
-      tractId: "13121006200",
-      drivers: [
-        { feature: "latitude", attributionF: 2.03 },
-        { feature: "longitude", attributionF: 0.63 },
-        { feature: "poverty_rate", attributionF: 0.45 },
-        { feature: "tree_canopy", attributionF: -0.80 },
-      ],
-      demographics: {
-        povertyRatePct: 18.4,
-        noVehicleRatePct: 18.1,
-        medianAge: 28.5,
-        totalPop: 2025,
-      },
-      why: "Tract 13121006200 running hot with prominent built-environment drivers.",
-      agentId: "atlanta_heat_agent",
-      agentLabel: "Agent 2",
-    },
-    {
-      lat: 33.7043,
-      lon: -84.3610,
-      label: "Agent 1: Tract 13121006802 (+0.87°F)",
-      predictedOffsetF: 0.87,
-      tractId: "13121006802",
-      drivers: [
-        { feature: "poverty_rate", attributionF: 0.72 },
-        { feature: "transit_distance", attributionF: 0.35 },
-      ],
-      demographics: {
-        povertyRatePct: 32.1,
-        noVehicleRatePct: 24.6,
-        medianAge: 34.2,
-        totalPop: 3100,
-      },
-      why: "Thomasville, Atlanta: high-need neighborhood prioritized for cooling center placement.",
-      agentId: "urban_heat_agent",
-      agentLabel: "Agent 1",
-    },
-  ]);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
+  // Fetch real city baseline from BigQuery semantic layer on mount
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, loading]);
+    async function loadBaseline() {
+      try {
+        const res = await fetch("/api/semantic?type=baseline");
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.baseline) {
+            setCityBaseline({
+              totalPop: data.baseline.total_population || 1447970,
+              povertyRatePct: +(data.baseline.city_poverty_rate * 100).toFixed(1) || 13.9,
+              noVehiclePct: +(data.baseline.city_no_vehicle_rate * 100).toFixed(1) || 8.2,
+              age65PlusPct: +(data.baseline.city_share_65_plus * 100).toFixed(1) || 12.5,
+              medianIncome: Math.round(data.baseline.city_median_income_usd) || 75714,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load city baseline from semantic API:", err);
+      }
+    }
+    loadBaseline();
+  }, []);
 
-  const handleSubmit = async (
-    textToSend?: string,
-    forcedMode?: "single" | "compare",
-    forcedAgentId?: "urban_heat_agent" | "atlanta_heat_agent"
-  ) => {
-    const query = textToSend || inputPrompt;
-    if (!query.trim() || loading) return;
-
-    const useCompare = forcedMode ? forcedMode === "compare" : isCompareMode;
-    const agentToUse = forcedAgentId || activeAgent;
-
-    const userMsg: Message = {
-      id: `user_${Date.now()}`,
-      sender: "user",
-      text: query,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
-    if (!textToSend) setInputPrompt("");
-    setLoading(true);
-
+  // Handle agent queries
+  const handleSendMessage = async (query: string) => {
+    setIsLoadingMessage(true);
     try {
-      const endpoint = window.location.pathname.startsWith("/devmode")
-        ? "/devmode/api/agent"
-        : "/api/agent";
-
-      const res = await fetch(endpoint, {
+      const res = await fetch("/api/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: query,
-          agentId: agentToUse,
-          compare: useCompare,
+          agentId: "atlanta_heat_agent",
+          compare: false,
+          sessionId: `session_${Date.now()}`,
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to query heat resilience agents");
-      }
-
-      if (data.compare) {
-        // Collect coordinates from both agents with structured ML drivers & demographics
-        const combinedCoords: LocationPoint[] = [];
-
-        const agent1Coords: LocationPoint[] = (data.agent1?.coordinates || []).map((c: any) => ({
-          lat: Number(c.lat),
-          lon: Number(c.lon),
-          label: c.label || `Agent 1 Site (${c.lat.toFixed(4)}, ${c.lon.toFixed(4)})`,
-          predictedOffsetF: c.predictedOffsetF,
-          drivers: c.drivers,
-          demographics: c.demographics,
-          why: c.why,
-          tractId: c.tractId,
-          score: c.score,
-          agentId: "urban_heat_agent" as const,
-          agentLabel: "Agent 1",
-        }));
-
-        const agent2Coords: LocationPoint[] = (data.agent2?.coordinates || []).map((c: any) => ({
-          lat: Number(c.lat),
-          lon: Number(c.lon),
-          label: c.label || `Agent 2 Site (${c.lat.toFixed(4)}, ${c.lon.toFixed(4)})`,
-          predictedOffsetF: c.predictedOffsetF,
-          drivers: c.drivers,
-          demographics: c.demographics,
-          why: c.why,
-          tractId: c.tractId,
-          score: c.score,
-          agentId: "atlanta_heat_agent" as const,
-          agentLabel: "Agent 2",
-        }));
-
-        combinedCoords.push(...agent1Coords, ...agent2Coords);
-
-        const agentMsg: Message = {
-          id: `compare_${Date.now()}`,
-          sender: "agent",
-          text: "",
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          coordinates: combinedCoords,
-          comparison: {
-            agent1: {
-              ...data.agent1,
-              coordinates: agent1Coords,
-            },
-            agent2: {
-              ...data.agent2,
-              coordinates: agent2Coords,
-            },
-          },
-        };
-
-        setMessages((prev) => [...prev, agentMsg]);
-
-        if (combinedCoords.length > 0) {
-          setAllLocations(combinedCoords);
-          setSelectedLocation(combinedCoords[0]);
-        }
-      } else {
-        const coords: LocationPoint[] = (data.coordinates || []).map((c: any) => ({
-          lat: Number(c.lat),
-          lon: Number(c.lon),
-          label: c.label || `Site (${c.lat.toFixed(4)}, ${c.lon.toFixed(4)})`,
-          predictedOffsetF: c.predictedOffsetF,
-          drivers: c.drivers,
-          demographics: c.demographics,
-          why: c.why,
-          tractId: c.tractId,
-          score: c.score,
-          agentId: agentToUse,
-          agentLabel: agentToUse === "atlanta_heat_agent" ? "Agent 2" : "Agent 1",
-        }));
-
-        const agentMsg: Message = {
-          id: `agent_${Date.now()}`,
-          sender: "agent",
-          text: data.response || "No response received.",
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          coordinates: coords,
-        };
-
-        setMessages((prev) => [...prev, agentMsg]);
-
-        if (coords.length > 0) {
-          setAllLocations(coords);
-          setSelectedLocation(coords[0]);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.structuredData?.sites && data.structuredData.sites.length > 0) {
+          // Merge incoming structured sites with existing sites
+          const updatedSites = [...sites];
+          data.structuredData.sites.forEach((site: any, idx: number) => {
+            if (idx < updatedSites.length) {
+              updatedSites[idx] = {
+                ...updatedSites[idx],
+                offsetF: site.predictedOffsetF || updatedSites[idx].offsetF,
+                drivers: site.drivers || updatedSites[idx].drivers,
+                demographics: {
+                  ...updatedSites[idx].demographics,
+                  povertyRatePct: site.demographics?.povertyRatePct ?? updatedSites[idx].demographics.povertyRatePct,
+                  noVehiclePct: site.demographics?.noVehicleRatePct ?? updatedSites[idx].demographics.noVehiclePct,
+                  medianIncome: site.demographics?.medianIncome ?? updatedSites[idx].demographics.medianIncome,
+                },
+              };
+            }
+          });
+          setSites(updatedSites);
         }
       }
-    } catch (err: any) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `err_${Date.now()}`,
-          sender: "agent",
-          text: `⚠️ **Unable to fetch agent response**: ${err.message}`,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        },
-      ]);
+    } catch (e) {
+      console.error("Agent query error:", e);
     } finally {
-      setLoading(false);
+      setIsLoadingMessage(false);
     }
   };
 
-  const handleClearHistory = () => {
-    setMessages([
-      {
-        id: "welcome_reset",
-        sender: "agent",
-        text: "Conversation cleared. Ready for your next query!",
-        timestamp: "Now",
-      },
-    ]);
+  const handleRegenerateProposal = async () => {
+    setIsRegenerating(true);
+    await handleSendMessage("Regenerate proposal draft for top sites in Atlanta");
+    setIsRegenerating(false);
   };
 
+  const selectedSite = sites.find((s) => s.id === selectedSiteId) || sites[0];
+  const site4 = sites.find((s) => s.id === 4) || sites[3];
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#070b14] text-slate-100 font-sans overflow-hidden">
-      {/* Top Header */}
-      <header className="h-16 border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md px-5 flex items-center justify-between shrink-0 z-20">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-rose-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-amber-500/10">
-            <Flame className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-bold text-slate-100 text-base sm:text-lg tracking-tight">
-                Urban Heat Resilience Studio
-              </h1>
-              <span className="hidden sm:inline-block px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                Live BigQuery ML + Multi-Agent
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 hidden sm:block">
-              Side-by-side agent comparison, microclimate predictions, & Google Maps spatial sync
-            </p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#090d16] text-slate-100 font-sans selection:bg-orange-500 selection:text-white flex flex-col">
+      {/* Top Navbar */}
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-        <div className="flex items-center gap-2.5">
-          {/* Mode Selector: Compare Side-by-Side vs Single Agent */}
-          <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-            <button
-              onClick={() => setIsCompareMode(true)}
-              className={`px-3 py-1 rounded-lg font-medium transition flex items-center gap-1.5 ${
-                isCompareMode
-                  ? "bg-gradient-to-r from-amber-600 to-emerald-600 text-white shadow-sm font-semibold"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <Scale className="w-3.5 h-3.5" />
-              <span>Side-by-Side Compare</span>
-            </button>
-            <button
-              onClick={() => setIsCompareMode(false)}
-              className={`px-3 py-1 rounded-lg font-medium transition ${
-                !isCompareMode
-                  ? "bg-slate-800 text-white shadow-sm"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              Single Agent
-            </button>
-          </div>
-
-          {/* If Single Agent, choose which agent */}
-          {!isCompareMode && (
-            <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
-              <button
-                onClick={() => setActiveAgent("urban_heat_agent")}
-                className={`px-2.5 py-1 rounded-lg font-medium transition ${
-                  activeAgent === "urban_heat_agent"
-                    ? "bg-amber-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                Agent 1 (Planner)
-              </button>
-              <button
-                onClick={() => setActiveAgent("atlanta_heat_agent")}
-                className={`px-2.5 py-1 rounded-lg font-medium transition ${
-                  activeAgent === "atlanta_heat_agent"
-                    ? "bg-emerald-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                Agent 2 (Explainer)
-              </button>
-            </div>
-          )}
-
-          <button
-            onClick={handleClearHistory}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 transition"
-            title="Clear Chat History"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </header>
-
-      {/* Main Split Layout: Left Chat & Controls (55%) + Right Google Maps View (45%) */}
-      <main className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* LEFT COLUMN: Agent Conversation & Input */}
-        <div className="w-full lg:w-[55%] flex flex-col border-r border-slate-800/80 bg-slate-900/30">
-          {/* Quick Scenario Recommendation Buttons */}
-          <div className="p-3 bg-slate-950/60 border-b border-slate-800/80 shrink-0">
-            <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Recommended Comparison & Planning Scenarios</span>
-              </div>
-              <span className="text-[10px] text-slate-500">
-                Mode:{" "}
-                <span className="font-semibold text-slate-300">
-                  {isCompareMode ? "Side-by-Side (Both Agents)" : activeAgent}
-                </span>
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {CATEGORIZED_PRESETS.map((preset, idx) => {
-                const IconComponent = preset.icon;
-                return (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      if (preset.mode === "compare") {
-                        setIsCompareMode(true);
-                        handleSubmit(preset.prompt, "compare");
-                      } else {
-                        if (preset.agentId) setActiveAgent(preset.agentId as any);
-                        handleSubmit(preset.prompt, preset.mode as any, preset.agentId as any);
-                      }
-                    }}
-                    disabled={loading}
-                    className="p-2.5 rounded-xl bg-slate-800/60 hover:bg-slate-800 border border-slate-700/70 hover:border-slate-600 text-left transition flex items-start gap-2 group"
-                  >
-                    <div className="p-1.5 rounded-lg bg-slate-700/50 text-amber-400 group-hover:text-amber-300 shrink-0 mt-0.5">
-                      <IconComponent className="w-3.5 h-3.5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold text-slate-200 group-hover:text-white truncate">
-                        {preset.title}
-                      </div>
-                      <div className="text-[10px] text-slate-400 truncate">
-                        {preset.category}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Chat Messages Stream */}
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex gap-3 text-sm ${
-                  msg.sender === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                {msg.sender === "agent" && (
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center text-white shrink-0 shadow-md">
-                    <Bot className="w-4 h-4" />
-                  </div>
-                )}
-
-                {/* If user message */}
-                {msg.sender === "user" ? (
-                  <div className="max-w-[85%] rounded-2xl p-3.5 shadow-sm leading-relaxed bg-blue-600 text-white rounded-br-xs">
-                    <p className="text-sm">{msg.text}</p>
-                    <div className="mt-1.5 text-[10px] text-blue-200 text-right">
-                      {msg.timestamp}
-                    </div>
-                  </div>
-                ) : msg.comparison ? (
-                  /* SIDE-BY-SIDE COMPARISON CARD */
-                  <div className="w-full rounded-2xl bg-slate-900 border border-slate-800 p-4 shadow-xl">
-                    <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
-                      <div className="flex items-center gap-2">
-                        <Scale className="w-4 h-4 text-amber-400" />
-                        <span className="font-semibold text-xs uppercase tracking-wider text-slate-300">
-                          Side-by-Side Model Comparison
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-slate-500">{msg.timestamp}</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Left: Agent 1 */}
-                      <div className="bg-slate-950/70 border border-amber-900/40 rounded-xl p-3.5 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-between pb-2 border-b border-slate-800/80 mb-2.5">
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
-                              <span className="font-bold text-xs text-amber-300">
-                                Agent 1: Urban Heat Planner
-                              </span>
-                            </div>
-                            {msg.comparison.agent1.latencyMs && (
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                {(msg.comparison.agent1.latencyMs / 1000).toFixed(2)}s
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-400 mb-2 italic">
-                            Composite Optimization (Heat Offset + Poverty + Transit + Population)
-                          </div>
-                          <div className="prose-dark text-xs max-h-[360px] overflow-y-auto pr-1">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {msg.comparison.agent1.response || msg.comparison.agent1.error || "No response"}
-                            </ReactMarkdown>
-                          </div>
-                        </div>
-
-                        {/* Agent 1 Map Pins */}
-                        {msg.comparison.agent1.coordinates && msg.comparison.agent1.coordinates.length > 0 && (
-                          <div className="mt-3 pt-2.5 border-t border-slate-800 flex flex-wrap gap-1.5 items-center">
-                            <span className="text-[10px] text-amber-400 font-medium">Map Pins:</span>
-                            {msg.comparison.agent1.coordinates.map((c, i) => (
-                              <button
-                                key={i}
-                                onClick={() => setSelectedLocation(c)}
-                                className="px-2 py-0.5 bg-amber-950/60 hover:bg-amber-900/60 border border-amber-800 text-amber-300 text-[10px] rounded font-mono transition"
-                              >
-                                #{i + 1} ({c.lat.toFixed(4)}, {c.lon.toFixed(4)})
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Right: Agent 2 */}
-                      <div className="bg-slate-950/70 border border-emerald-900/40 rounded-xl p-3.5 flex flex-col justify-between">
-                        <div>
-                          <div className="flex items-center justify-between pb-2 border-b border-slate-800/80 mb-2.5">
-                            <div className="flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
-                              <span className="font-bold text-xs text-emerald-300">
-                                Agent 2: Atlanta BQML Explainer
-                              </span>
-                            </div>
-                            {msg.comparison.agent2.latencyMs && (
-                              <span className="text-[10px] text-slate-400 font-mono">
-                                {(msg.comparison.agent2.latencyMs / 1000).toFixed(2)}s
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-[10px] text-slate-400 mb-2 italic">
-                            Direct BigQuery ML.EXPLAIN_PREDICT on atlanta_heat_model
-                          </div>
-                          <div className="prose-dark text-xs max-h-[360px] overflow-y-auto pr-1">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                              {msg.comparison.agent2.response || msg.comparison.agent2.error || "No response"}
-                            </ReactMarkdown>
-                          </div>
-                        </div>
-
-                        {/* Agent 2 Map Pins */}
-                        {msg.comparison.agent2.coordinates && msg.comparison.agent2.coordinates.length > 0 && (
-                          <div className="mt-3 pt-2.5 border-t border-slate-800 flex flex-wrap gap-1.5 items-center">
-                            <span className="text-[10px] text-emerald-400 font-medium">Map Pins:</span>
-                            {msg.comparison.agent2.coordinates.map((c, i) => (
-                              <button
-                                key={i}
-                                onClick={() => setSelectedLocation(c)}
-                                className="px-2 py-0.5 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800 text-emerald-300 text-[10px] rounded font-mono transition"
-                              >
-                                #{i + 1} ({c.lat.toFixed(4)}, {c.lon.toFixed(4)})
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* SINGLE AGENT REGULAR MESSAGE */
-                  <div className="max-w-[88%] rounded-2xl p-4 shadow-sm leading-relaxed bg-slate-800/90 border border-slate-700/80 text-slate-200 rounded-bl-xs">
-                    <div className="prose-dark text-sm">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {msg.text}
-                      </ReactMarkdown>
-                    </div>
-
-                    {msg.coordinates && msg.coordinates.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-slate-700/60 flex flex-wrap gap-2 items-center">
-                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-emerald-400" /> View in Google Maps:
-                        </span>
-                        {msg.coordinates.map((c, i) => (
-                          <button
-                            key={i}
-                            onClick={() => setSelectedLocation(c)}
-                            className="px-2.5 py-1 bg-slate-900/90 hover:bg-emerald-950 border border-slate-700 hover:border-emerald-500 text-emerald-300 text-[11px] rounded-lg font-mono transition flex items-center gap-1"
-                          >
-                            <span>#{i + 1}:</span>
-                            <span>{c.lat.toFixed(4)}, {c.lon.toFixed(4)}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="mt-2 text-[10px] text-slate-400/80 text-right">
-                      {msg.timestamp}
-                    </div>
-                  </div>
-                )}
-
-                {msg.sender === "user" && (
-                  <div className="w-8 h-8 rounded-xl bg-blue-700 flex items-center justify-center text-white shrink-0 shadow-md">
-                    <User className="w-4 h-4" />
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {loading && (
-              <div className="flex gap-3 text-sm items-center text-slate-400 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 animate-pulse">
-                <div className="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center text-amber-400 shrink-0">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                </div>
-                <div>
-                  <div className="font-medium text-slate-300 text-xs">
-                    {isCompareMode
-                      ? "Querying Agent 1 & Agent 2 concurrently in BigQuery ML..."
-                      : "Consulting BigQuery ML & Google Maps..."}
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    Executing model inference, calculating attributions, and geocoding candidate coordinates
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* User Input Form */}
-          <div className="p-3 bg-slate-950 border-t border-slate-800/80">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSubmit();
-              }}
-              className="flex items-center gap-2"
-            >
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  value={inputPrompt}
-                  onChange={(e) => setInputPrompt(e.target.value)}
-                  placeholder={
-                    isCompareMode
-                      ? "Ask a question to compare both agents side-by-side (e.g. Which tracts are hottest and why?)..."
-                      : "Ask a question or street address (e.g. 10th St NE, Atlanta)..."
-                  }
-                  disabled={loading}
-                  className="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition shadow-inner"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || !inputPrompt.trim()}
-                className={`px-5 py-3 text-white rounded-xl font-medium text-sm transition flex items-center gap-2 shadow-lg shrink-0 disabled:opacity-40 ${
-                  isCompareMode
-                    ? "bg-gradient-to-r from-amber-600 to-emerald-600 hover:opacity-90 shadow-emerald-600/20"
-                    : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20"
-                }`}
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    <span className="hidden sm:inline">
-                      {isCompareMode ? "Compare" : "Send"}
-                    </span>
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: Interactive Google Maps Spatial Inspector */}
-        <div className="w-full lg:w-[45%] p-3 sm:p-4 flex flex-col bg-slate-950 min-h-[420px]">
-          <MapViewer
-            selectedLocation={selectedLocation}
-            locations={allLocations}
-            onSelectLocation={(loc) => setSelectedLocation(loc)}
+      {/* Main Content Body */}
+      <main className="flex-1 flex flex-col">
+        {activeTab === "ask" && (
+          <AskTab
+            sites={sites}
+            selectedSiteId={selectedSiteId}
+            setSelectedSiteId={setSelectedSiteId}
+            centersToFund={centersToFund}
+            setCentersToFund={setCentersToFund}
+            onNavigateTab={setActiveTab}
+            onOpenCompareModal={() => setIsCompareModalOpen(true)}
+            onSendMessage={handleSendMessage}
+            isLoadingMessage={isLoadingMessage}
           />
-        </div>
+        )}
+
+        {activeTab === "sites" && (
+          <SitesTab
+            sites={sites}
+            selectedSiteId={selectedSiteId}
+            setSelectedSiteId={setSelectedSiteId}
+            cityBaseline={cityBaseline}
+            onOpenCompareModal={() => setIsCompareModalOpen(true)}
+          />
+        )}
+
+        {activeTab === "equity" && (
+          <EquityAuditTab
+            sites={sites}
+            cityBaseline={cityBaseline}
+            onNavigateTab={setActiveTab}
+          />
+        )}
+
+        {activeTab === "proposal" && (
+          <ProposalTab
+            sites={sites}
+            onRegenerate={handleRegenerateProposal}
+            isRegenerating={isRegenerating}
+          />
+        )}
       </main>
+
+      {/* Compare Modal */}
+      <CompareModal
+        isOpen={isCompareModalOpen}
+        onClose={() => setIsCompareModalOpen(false)}
+        siteA={selectedSite}
+        siteB={site4}
+      />
     </div>
   );
 }
