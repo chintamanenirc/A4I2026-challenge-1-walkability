@@ -9,48 +9,48 @@ import { ProposalTab } from "../components/ProposalTab";
 import { CompareModal } from "../components/CompareModal";
 import { SiteData, CityBaseline, TractScatterPoint } from "../components/types";
 
-// Atlanta candidate sites calibrated to the BigQuery semantic layer & BQML EXPLAIN_PREDICT
+// Atlanta candidate sites calibrated to PR #2 BigQuery semantic layer (a4i_semantic.*) & BQML (a4i_ml.grid_predictions)
 const INITIAL_SITES: SiteData[] = [
   {
     id: 1,
-    name: "Mechanicsville",
-    tractId: "13121005800",
-    shortTract: "58.00",
-    lat: 33.738,
-    lng: -84.398,
-    offsetF: 4.4,
-    hotDaysPerSummer: 44,
-    residentsReached: 4890,
+    name: "Mechanicsville / Pittsburgh",
+    tractId: "13121004400",
+    shortTract: "44.00",
+    lat: 33.7408,
+    lng: -84.4018,
+    offsetF: 4.3,
+    hotDaysPerSummer: 67,
+    residentsReached: 10866,
     estAnnualCost: "$180,000",
-    dominantDriver: "Impervious surface",
+    dominantDriver: "Homes within 1.5 km",
     dominantDiagnosis:
-      "Mostly pavement. Shade structures and cool pavement around the site target the cause. We can diagnose the cause; we can’t simulate the fix.",
+      "Dense surrounding housing and impervious rail/commercial corridors trap afternoon radiant heat. Shade structures and cool-pavement retrofits target the primary driver. We can diagnose the cause; we can’t simulate the fix.",
     drivers: [
       {
-        feature: "impervious_surface",
-        label: "Impervious surface",
-        attributionF: 2.3,
+        feature: "housing_within_1500m",
+        label: "Homes within 1.5 km",
+        attributionF: 1.42,
       },
       {
-        feature: "street_density",
-        label: "Street density",
-        attributionF: 1.4,
+        feature: "median_year_built",
+        label: "Building age",
+        attributionF: 0.18,
       },
       {
-        feature: "land_use_mix",
-        label: "Land-use mix",
-        attributionF: 1.0,
+        feature: "housing_density_km2",
+        label: "Block housing density",
+        attributionF: 0.13,
       },
       {
-        feature: "park_proximity",
-        label: "Park proximity",
-        attributionF: -0.3,
+        feature: "pop_density_km2",
+        label: "Population density",
+        attributionF: -0.39,
       },
     ],
-    noCarPct: 28.4,
-    seniorsPct: 16.2,
-    povertyRate: 34.8,
-    medianIncome: 33900,
+    noCarPct: 47.2,
+    seniorsPct: 9.0,
+    povertyRate: 33.4,
+    medianIncome: 24297,
     blackPct: 81.4,
     hispanicPct: 5.2,
     whitePct: 9.8,
@@ -60,185 +60,185 @@ const INITIAL_SITES: SiteData[] = [
   },
   {
     id: 2,
-    name: "Old Fourth Ward",
-    tractId: "13121002900",
-    shortTract: "29.00",
-    lat: 33.755,
-    lng: -84.372,
-    offsetF: 3.9,
-    hotDaysPerSummer: 42,
-    residentsReached: 4120,
+    name: "West End / Ashview Heights",
+    tractId: "13121004200",
+    shortTract: "42.00",
+    lat: 33.739,
+    lng: -84.4182,
+    offsetF: 4.3,
+    hotDaysPerSummer: 67,
+    residentsReached: 8949,
     estAnnualCost: "$180,000",
-    dominantDriver: "Impervious surface",
+    dominantDriver: "Homes within 1.5 km",
     dominantDiagnosis:
-      "Dense commercial corridors and dark asphalt parking lots trap afternoon radiant heat. Shade structures and cool-roof retrofits near Boulevard address the dominant driver.",
+      "High surrounding housing density and older building stock along the West End transit corridor with 46.7% car-free households and 18.4% seniors 65+.",
     drivers: [
       {
-        feature: "impervious_surface",
-        label: "Impervious surface",
-        attributionF: 1.9,
+        feature: "housing_within_1500m",
+        label: "Homes within 1.5 km",
+        attributionF: 1.45,
       },
       {
-        feature: "street_density",
-        label: "Street density",
-        attributionF: 1.4,
+        feature: "water_share",
+        label: "Nearby water / canopy",
+        attributionF: 0.11,
       },
       {
-        feature: "land_use_mix",
-        label: "Land-use mix",
-        attributionF: 0.9,
+        feature: "median_year_built",
+        label: "Building age",
+        attributionF: 0.11,
       },
       {
-        feature: "park_proximity",
-        label: "Park proximity",
-        attributionF: -0.3,
+        feature: "pop_within_1500m",
+        label: "Surrounding population",
+        attributionF: -0.1,
       },
     ],
-    noCarPct: 24.1,
-    seniorsPct: 17.8,
-    povertyRate: 28.9,
-    medianIncome: 41200,
-    blackPct: 74.6,
-    hispanicPct: 6.1,
-    whitePct: 14.5,
+    noCarPct: 46.7,
+    seniorsPct: 18.4,
+    povertyRate: 36.3,
+    medianIncome: 23906,
+    blackPct: 82.5,
+    hispanicPct: 4.9,
+    whitePct: 9.3,
     mapX: 62,
     mapY: 57,
     isFunded: true,
   },
   {
     id: 3,
-    name: "West End",
-    tractId: "13121006802",
-    shortTract: "68.02",
-    lat: 33.735,
-    lng: -84.417,
-    offsetF: 3.6,
-    hotDaysPerSummer: 41,
-    residentsReached: 3250,
+    name: "Oakland City / Campbellton",
+    tractId: "13121007603",
+    shortTract: "76.03",
+    lat: 33.7065,
+    lng: -84.4404,
+    offsetF: 3.3,
+    hotDaysPerSummer: 56,
+    residentsReached: 3943,
     estAnnualCost: "$180,000",
-    dominantDriver: "Impervious surface",
+    dominantDriver: "Homes within 1.5 km",
     dominantDiagnosis:
-      "High impervious surface footprint along the Lee St transit corridor with limited tree canopy buffer adjacent to senior housing blocks.",
+      "Severe transit-dependent vulnerability (56.4% no-vehicle households, 18.8% seniors 65+, 48.6% poverty) paired with +3.3°F peak cell heat offset along Campbellton Rd.",
     drivers: [
       {
-        feature: "impervious_surface",
-        label: "Impervious surface",
-        attributionF: 1.8,
+        feature: "housing_within_1500m",
+        label: "Homes within 1.5 km",
+        attributionF: 1.12,
       },
       {
-        feature: "street_density",
-        label: "Street density",
-        attributionF: 1.1,
+        feature: "water_share",
+        label: "Nearby water / canopy",
+        attributionF: 0.11,
       },
       {
-        feature: "land_use_mix",
-        label: "Land-use mix",
-        attributionF: 1.0,
+        feature: "pop_density_km2",
+        label: "Population density",
+        attributionF: 0.08,
       },
       {
-        feature: "park_proximity",
-        label: "Park proximity",
-        attributionF: -0.3,
+        feature: "median_year_built",
+        label: "Building age",
+        attributionF: -0.07,
       },
     ],
-    noCarPct: 22.5,
-    seniorsPct: 14.6,
-    povertyRate: 31.7,
-    medianIncome: 39300,
-    blackPct: 82.5,
-    hispanicPct: 4.9,
-    whitePct: 9.3,
+    noCarPct: 56.4,
+    seniorsPct: 18.8,
+    povertyRate: 48.6,
+    medianIncome: 14630,
+    blackPct: 84.1,
+    hispanicPct: 4.6,
+    whitePct: 8.2,
     mapX: 48,
     mapY: 75,
     isFunded: true,
   },
   {
     id: 4,
-    name: "Bankhead / Midtown Edge",
-    tractId: "13121002400",
-    shortTract: "24.00",
-    lat: 33.768,
-    lng: -84.428,
-    offsetF: 3.1,
-    hotDaysPerSummer: 39,
-    residentsReached: 2480,
+    name: "Adair Park / Mechanicsville S.",
+    tractId: "13121005800",
+    shortTract: "58.00",
+    lat: 33.7319,
+    lng: -84.4106,
+    offsetF: 4.7,
+    hotDaysPerSummer: 67,
+    residentsReached: 7353,
     estAnnualCost: "$165,000",
-    dominantDriver: "Street density",
+    dominantDriver: "Homes within 1.5 km",
     dominantDiagnosis:
-      "Ranked 4th. Hot industrial/arterial edge, but its tract has lower car-free household share (12.4%) and partially overlaps earlier picks.",
+      "Ranked 4th. Hot rail/industrial edge (+4.7°F peak cell), but its tract has much lower car-free household share (17.0% vs 47.2% in #1) and lower poverty (14.1%), and overlaps #1’s walk shed.",
     drivers: [
       {
-        feature: "impervious_surface",
-        label: "Impervious surface",
-        attributionF: 1.4,
+        feature: "housing_within_1500m",
+        label: "Homes within 1.5 km",
+        attributionF: 1.53,
       },
       {
-        feature: "street_density",
-        label: "Street density",
-        attributionF: 1.2,
+        feature: "pop_density_km2",
+        label: "Population density",
+        attributionF: 0.13,
       },
       {
-        feature: "land_use_mix",
-        label: "Land-use mix",
-        attributionF: 0.8,
+        feature: "water_share",
+        label: "Nearby water / canopy",
+        attributionF: 0.11,
       },
       {
-        feature: "park_proximity",
-        label: "Park proximity",
-        attributionF: -0.3,
+        feature: "pop_within_1500m",
+        label: "Surrounding population",
+        attributionF: -0.08,
       },
     ],
-    noCarPct: 12.4,
-    seniorsPct: 11.2,
-    povertyRate: 17.8,
-    medianIncome: 58400,
-    blackPct: 54.0,
+    noCarPct: 17.0,
+    seniorsPct: 12.3,
+    povertyRate: 14.1,
+    medianIncome: 48235,
+    blackPct: 68.0,
     hispanicPct: 7.2,
-    whitePct: 33.1,
+    whitePct: 21.1,
     mapX: 88,
     mapY: 42,
     isFunded: false,
   },
   {
     id: 5,
-    name: "Lakewood Heights",
+    name: "Lakewood / Sylvan Hills",
     tractId: "13121006500",
     shortTract: "65.00",
-    lat: 33.702,
-    lng: -84.389,
-    offsetF: 2.8,
-    hotDaysPerSummer: 38,
-    residentsReached: 2190,
+    lat: 33.7141,
+    lng: -84.4101,
+    offsetF: 3.5,
+    hotDaysPerSummer: 56,
+    residentsReached: 5529,
     estAnnualCost: "$160,000",
-    dominantDriver: "Street density",
+    dominantDriver: "Homes within 1.5 km",
     dominantDiagnosis:
-      "Southern residential tract with moderate tree canopy cooling and lower senior density than top 3 picks.",
+      "Southern residential tract with +3.5°F peak cell offset and 14.8% seniors, but significantly lower car-free household rate (11.5%) than top 3 picks.",
     drivers: [
       {
-        feature: "impervious_surface",
-        label: "Impervious surface",
-        attributionF: 1.2,
+        feature: "housing_within_1500m",
+        label: "Homes within 1.5 km",
+        attributionF: 0.9,
       },
       {
-        feature: "street_density",
-        label: "Street density",
-        attributionF: 1.1,
+        feature: "water_share",
+        label: "Nearby water / canopy",
+        attributionF: 0.11,
       },
       {
-        feature: "land_use_mix",
-        label: "Land-use mix",
-        attributionF: 0.8,
+        feature: "pop_density_km2",
+        label: "Population density",
+        attributionF: 0.09,
       },
       {
-        feature: "park_proximity",
-        label: "Park proximity",
-        attributionF: -0.3,
+        feature: "median_year_built",
+        label: "Building age",
+        attributionF: -0.18,
       },
     ],
-    noCarPct: 16.8,
-    seniorsPct: 12.1,
-    povertyRate: 22.4,
-    medianIncome: 48900,
+    noCarPct: 11.5,
+    seniorsPct: 14.8,
+    povertyRate: 32.3,
+    medianIncome: 53409,
     blackPct: 71.2,
     hispanicPct: 8.4,
     whitePct: 16.9,
@@ -269,7 +269,7 @@ export default function Home() {
 
   const [cityBaseline, setCityBaseline] = useState<CityBaseline>({
     medianIncome: 75714,
-    povertyRate: 13.9,
+    povertyRate: 14.0,
     noCarPct: 8.2,
     seniorsPct: 12.5,
     blackPct: 47.2,
@@ -278,13 +278,14 @@ export default function Home() {
     asianPct: 4.8,
   });
 
-  // Load real city baseline and census tract scatter points from BigQuery semantic layer
+  // Load real city baseline, candidate site metrics, and census tract scatter points from PR #2 BigQuery semantic layer
   useEffect(() => {
     async function loadSemanticData() {
       try {
-        const [baselineRes, scatterRes] = await Promise.all([
+        const [baselineRes, scatterRes, sitesRes] = await Promise.all([
           fetch("/api/semantic?type=baseline"),
           fetch("/api/semantic?type=tracts_scatter"),
+          fetch("/api/semantic?type=sites"),
         ]);
 
         if (baselineRes.ok) {
@@ -329,6 +330,66 @@ export default function Home() {
           const sData = await scatterRes.json();
           if (Array.isArray(sData?.tracts) && sData.tracts.length > 0) {
             setTractsScatter(sData.tracts);
+          }
+        }
+
+        if (sitesRes.ok) {
+          const sitesData = await sitesRes.json();
+          if (Array.isArray(sitesData?.sites) && sitesData.sites.length > 0) {
+            const byGeoId = new Map<string, any>();
+            for (const row of sitesData.sites) {
+              if (row?.geo_id) {
+                byGeoId.set(String(row.geo_id), row);
+              }
+            }
+            setSites((prev) =>
+              prev.map((site) => {
+                const row = byGeoId.get(site.tractId);
+                if (!row) return site;
+                const liveDrivers =
+                  Array.isArray(row.drivers) && row.drivers.length >= 3
+                    ? row.drivers
+                    : site.drivers;
+                return {
+                  ...site,
+                  lat: typeof row.lat === "number" ? row.lat : site.lat,
+                  lng: typeof row.lon === "number" ? row.lon : site.lng,
+                  offsetF:
+                    typeof row.max_cell_offset_f === "number"
+                      ? +row.max_cell_offset_f.toFixed(1)
+                      : site.offsetF,
+                  hotDaysPerSummer:
+                    typeof row.hot_days_ge_95_per_yr === "number"
+                      ? row.hot_days_ge_95_per_yr
+                      : site.hotDaysPerSummer,
+                  residentsReached:
+                    typeof row.walk_pop === "number" && row.walk_pop > 0
+                      ? row.walk_pop
+                      : typeof row.population === "number"
+                        ? row.population
+                        : site.residentsReached,
+                  noCarPct:
+                    typeof row.no_car_pct === "number"
+                      ? row.no_car_pct
+                      : site.noCarPct,
+                  seniorsPct:
+                    typeof row.seniors_pct === "number"
+                      ? row.seniors_pct
+                      : site.seniorsPct,
+                  povertyRate:
+                    typeof row.poverty_pct === "number"
+                      ? row.poverty_pct
+                      : site.povertyRate,
+                  medianIncome:
+                    typeof row.median_income === "number"
+                      ? Math.round(row.median_income)
+                      : site.medianIncome,
+                  drivers: liveDrivers,
+                  dominantDriver:
+                    liveDrivers[0]?.label || site.dominantDriver,
+                };
+              })
+            );
           }
         }
       } catch (err) {
@@ -450,40 +511,14 @@ export default function Home() {
 
   const selectedSite = sites.find((s) => s.id === selectedSiteId) || sites[0];
   const site4 = sites.find((s) => s.id === 4) || sites[3] || sites[0];
-  const fundedSites = sites.slice(0, centersToFund);
-  const totalReached = fundedSites.reduce(
-    (sum, s) => sum + s.residentsReached,
-    0
-  );
-  const totalBudgetNum = fundedSites.reduce((sum, s) => {
-    const num = parseInt((s.estAnnualCost || "$180,000").replace(/[^0-9]/g, ""), 10);
-    return sum + (isNaN(num) ? 180000 : num);
-  }, 0);
-  const totalBudgetStr = `$${Math.round(totalBudgetNum / 1000)}k`;
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans selection:bg-[#f97316]/30 selection:text-orange-200 flex flex-col relative isolate">
-      {/* Ambient Radial Gradient Backdrop for Linear/Stripe Depth */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
-      >
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[960px] h-[420px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.09),transparent_70%)] blur-3xl" />
-        <div className="absolute top-1/3 -right-32 w-[520px] h-[520px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(56,189,248,0.05),transparent_70%)] blur-3xl" />
-      </div>
-
+    <div className="min-h-screen bg-[#070b12] text-slate-100 font-sans selection:bg-[#f97316] selection:text-[#090d16] flex flex-col">
       {/* Top Navbar + Scenario Bar */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        centersToFund={centersToFund}
-        totalReached={totalReached}
-        totalBudgetStr={totalBudgetStr}
-        onOpenCompareModal={() => setIsCompareModalOpen(true)}
-      />
+      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Content Container */}
-      <main className="flex-1 w-full max-w-[1440px] mx-auto p-6 sm:p-8 flex flex-col gap-8">
+      <main className="flex-1 w-full max-w-[1400px] mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
         {activeTab === "ask" && (
           <AskTab
             sites={sites}

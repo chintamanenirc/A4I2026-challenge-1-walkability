@@ -418,23 +418,25 @@ def audit_equity(candidate_geo_ids: List[str]) -> Dict[str, Any]:
     query = f"""
     WITH city_baseline AS (
       SELECT
-        ROUND(AVG(CASE WHEN median_income > 0 THEN median_income END), 0) AS city_avg_income,
-        ROUND(AVG(poverty_rate) * 100, 1) AS city_avg_poverty_pct,
-        ROUND(AVG(no_vehicle_rate) * 100, 1) AS city_avg_no_vehicle_pct,
-        ROUND(AVG(median_age), 1) AS city_avg_age,
-        COUNT(*) AS total_tracts_city
-      FROM `{PROJECT_ID}.{DATASET_ID}.tract_demographics`
-      WHERE total_pop > 0
+        ROUND(city_median_income_usd, 0) AS city_avg_income,
+        ROUND(city_poverty_rate * 100, 1) AS city_avg_poverty_pct,
+        ROUND(city_no_vehicle_rate * 100, 1) AS city_avg_no_vehicle_pct,
+        ROUND(city_share_65_plus * 100, 1) AS city_avg_65_plus_pct,
+        ROUND(city_median_age_years, 1) AS city_avg_age,
+        populated_tracts AS total_tracts_city
+      FROM `{PROJECT_ID}.a4i_semantic.audit_city_baseline`
+      LIMIT 1
     ),
     recommended_sample AS (
       SELECT
-        ROUND(AVG(CASE WHEN median_income > 0 THEN median_income END), 0) AS rec_avg_income,
-        ROUND(AVG(poverty_rate) * 100, 1) AS rec_avg_poverty_pct,
-        ROUND(AVG(no_vehicle_rate) * 100, 1) AS rec_avg_no_vehicle_pct,
-        ROUND(AVG(median_age), 1) AS rec_avg_age,
-        SUM(total_pop) AS total_population_served,
+        ROUND(SAFE_DIVIDE(SUM(population * median_income), SUM(IF(median_income IS NULL, 0, population))), 0) AS rec_avg_income,
+        ROUND(SAFE_DIVIDE(SUM(population * poverty_rate), SUM(IF(poverty_rate IS NULL, 0, population))) * 100, 1) AS rec_avg_poverty_pct,
+        ROUND(SAFE_DIVIDE(SUM(population * no_vehicle_rate), SUM(IF(no_vehicle_rate IS NULL, 0, population))) * 100, 1) AS rec_avg_no_vehicle_pct,
+        ROUND(SAFE_DIVIDE(SUM(pop_65_plus), NULLIF(SUM(population), 0)) * 100, 1) AS rec_avg_65_plus_pct,
+        ROUND(SAFE_DIVIDE(SUM(population * median_age), SUM(IF(median_age IS NULL, 0, population))), 1) AS rec_avg_age,
+        SUM(population) AS total_population_served,
         COUNT(*) AS num_recommended_tracts
-      FROM `{PROJECT_ID}.{DATASET_ID}.tract_demographics`
+      FROM `{PROJECT_ID}.a4i_semantic.dim_tract`
       WHERE geo_id IN ({formatted_ids})
     )
     SELECT * FROM city_baseline CROSS JOIN recommended_sample

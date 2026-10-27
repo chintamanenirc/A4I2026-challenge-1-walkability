@@ -170,13 +170,19 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
   const currentLayerInfo = layerDescriptions[activeLayer];
 
   return (
-    <div className="bg-[#0f1724] border border-[#1e2c42] rounded-2xl flex flex-col overflow-hidden shadow-xl">
+    <div className="bg-[#0d1424]/90 backdrop-blur-xl border border-white/10 rounded-2xl flex flex-col overflow-hidden shadow-2xl relative">
+      {/* Subtle Radial Top Glow */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 right-12 w-72 h-36 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.12),transparent_70%)] blur-2xl"
+      />
+
       {/* Top Header of Map Card */}
-      <div className="px-5 py-4 flex flex-wrap items-center justify-between gap-4 border-b border-[#182336]">
+      <div className="px-6 py-4 flex flex-wrap items-center justify-between gap-4 border-b border-white/10 relative z-10">
         <div>
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-[#f97316]" />
-            <h2 className="text-base font-extrabold text-slate-100 leading-snug">
+            <h2 className="text-base font-extrabold text-slate-50 tracking-tight leading-snug">
               {showLiveGoogleMap
                 ? `Live Google Maps · Site ${activeSite.id}: ${activeSite.name}`
                 : currentLayerInfo.title}
@@ -184,52 +190,59 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
             {showLiveGoogleMap
-              ? `Inspecting [${activeSite.lat.toFixed(4)}, ${(activeSite.lon ?? activeSite.lng).toFixed(4)}] · Tract ${activeSite.shortTract}`
+              ? `Inspecting [${activeSite.lat.toFixed(4)}, ${activeLon.toFixed(4)}] · Tract ${activeSite.shortTract}`
               : "Hover any census tract to inspect metrics · Click numbered pins (1–5) to select a site"}
           </p>
         </div>
 
         {/* Layer Segmented Control + Live Google Maps Toggle */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center bg-[#0b111b] border border-[#1f2d42] p-1 rounded-xl">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div
+            role="group"
+            aria-label="Map choropleth layer selector"
+            className="flex items-center gap-1 bg-[#090e1a]/90 border border-white/10 p-1 rounded-2xl shadow-inner"
+          >
             <button
               type="button"
+              aria-pressed={activeLayer === "heat" && !showLiveGoogleMap}
               onClick={() => {
                 setActiveLayer("heat");
                 setShowLiveGoogleMap(false);
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs transition-all duration-200 active:scale-[0.98] ${
                 activeLayer === "heat" && !showLiveGoogleMap
-                  ? "bg-[#f97316] text-[#090d16] font-extrabold shadow-sm"
-                  : "text-slate-300 hover:text-white font-medium"
+                  ? "bg-gradient-to-b from-[#fb923c] to-[#f97316] text-[#090d16] font-extrabold shadow-sm"
+                  : "text-slate-300 hover:text-white hover:bg-white/[0.06] font-medium"
               }`}
             >
               Heat offset
             </button>
             <button
               type="button"
+              aria-pressed={activeLayer === "nocar" && !showLiveGoogleMap}
               onClick={() => {
                 setActiveLayer("nocar");
                 setShowLiveGoogleMap(false);
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs transition-all duration-200 active:scale-[0.98] ${
                 activeLayer === "nocar" && !showLiveGoogleMap
-                  ? "bg-[#f97316] text-[#090d16] font-extrabold shadow-sm"
-                  : "text-slate-300 hover:text-white font-medium"
+                  ? "bg-gradient-to-b from-[#fb923c] to-[#f97316] text-[#090d16] font-extrabold shadow-sm"
+                  : "text-slate-300 hover:text-white hover:bg-white/[0.06] font-medium"
               }`}
             >
               No car %
             </button>
             <button
               type="button"
+              aria-pressed={activeLayer === "age65" && !showLiveGoogleMap}
               onClick={() => {
                 setActiveLayer("age65");
                 setShowLiveGoogleMap(false);
               }}
-              className={`px-3.5 py-1.5 rounded-lg text-xs transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs transition-all duration-200 active:scale-[0.98] ${
                 activeLayer === "age65" && !showLiveGoogleMap
-                  ? "bg-[#f97316] text-[#090d16] font-extrabold shadow-sm"
-                  : "text-slate-300 hover:text-white font-medium"
+                  ? "bg-gradient-to-b from-[#fb923c] to-[#f97316] text-[#090d16] font-extrabold shadow-sm"
+                  : "text-slate-300 hover:text-white hover:bg-white/[0.06] font-medium"
               }`}
             >
               Age 65+ %
@@ -238,12 +251,14 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
 
           <button
             type="button"
+            aria-pressed={showLiveGoogleMap}
+            aria-label="Toggle between Census Tract Choropleth and Live Google Maps Embed"
             onClick={() => setShowLiveGoogleMap(!showLiveGoogleMap)}
             title="Switch between Census Tract Choropleth and Live Google Maps Embed"
-            className={`px-3 py-2 rounded-xl border text-xs font-mono flex items-center gap-1.5 transition-colors ${
+            className={`px-3.5 py-2 rounded-xl border text-xs font-mono flex items-center gap-1.5 transition-all duration-200 active:scale-[0.98] ${
               showLiveGoogleMap
-                ? "bg-[#f97316] border-[#f97316] text-[#090d16] font-extrabold shadow-sm"
-                : "bg-[#0b111b] border-[#1f2d42] text-slate-300 hover:text-white hover:border-slate-600"
+                ? "bg-gradient-to-b from-[#fb923c] to-[#f97316] border-[#f97316] text-[#090d16] font-extrabold shadow-sm"
+                : "bg-[#090e1a]/90 border-white/10 text-slate-300 hover:text-white hover:bg-white/[0.06] hover:ring-1 hover:ring-white/20"
             }`}
           >
             <Globe className="w-3.5 h-3.5" />
@@ -253,8 +268,8 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
       </div>
 
       {/* Map Viewport */}
-      <div className="p-4 sm:px-5 sm:py-4">
-        <div className="relative w-full h-[420px] bg-[#090e17] border border-[#1e2c42] rounded-xl overflow-hidden select-none">
+      <div className="p-4 sm:px-6 sm:py-5">
+        <div className="relative w-full h-[420px] bg-[#080d17] border border-white/10 rounded-xl overflow-hidden select-none shadow-inner">
           {!showLiveGoogleMap ? (
             <svg
               viewBox="0 0 760 480"
@@ -525,7 +540,7 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
                   href={`https://www.google.com/maps/search/?api=1&query=${activeSite.lat},${activeSite.lon ?? activeSite.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-lg bg-[#0b111b]/95 border border-slate-700 hover:border-[#f97316] text-xs font-semibold text-slate-100 flex items-center gap-1.5 shadow-lg transition-colors"
+                  className="px-3.5 py-2 rounded-xl bg-[#090d16]/90 backdrop-blur-md border border-white/15 hover:border-[#f97316]/60 hover:ring-1 hover:ring-[#f97316]/30 text-xs font-semibold text-slate-100 flex items-center gap-1.5 shadow-xl transition-all duration-200 active:scale-[0.98]"
                 >
                   <ExternalLink className="w-3.5 h-3.5 text-[#f97316]" />
                   <span>Open in Google Maps</span>
@@ -534,7 +549,7 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
                   href={`https://www.google.com/maps/dir/?api=1&destination=${activeSite.lat},${activeSite.lon ?? activeSite.lng}&travelmode=walking`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-lg bg-[#0b111b]/95 border border-slate-700 hover:border-[#f97316] text-xs font-semibold text-slate-100 flex items-center gap-1.5 shadow-lg transition-colors"
+                  className="px-3.5 py-2 rounded-xl bg-[#090d16]/90 backdrop-blur-md border border-white/15 hover:border-emerald-400/60 hover:ring-1 hover:ring-emerald-400/30 text-xs font-semibold text-slate-100 flex items-center gap-1.5 shadow-xl transition-all duration-200 active:scale-[0.98]"
                 >
                   <Navigation className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Walking Directions</span>
@@ -545,12 +560,12 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
 
           {/* Top-Left Interactive Tract Hover Inspector */}
           {!showLiveGoogleMap && hoveredTract && (
-            <div className="absolute top-3 left-3 px-3.5 py-2.5 rounded-xl bg-[#090d16]/95 border border-[#f97316]/60 shadow-xl pointer-events-none max-w-xs animate-in fade-in duration-100">
+            <div className="absolute top-3.5 left-3.5 px-4 py-3 rounded-xl bg-[#090d16]/90 backdrop-blur-xl border border-[#f97316]/50 shadow-2xl pointer-events-none max-w-xs animate-in fade-in duration-150">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-xs font-extrabold text-white">
                   {hoveredTract.areaLabel}
                 </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/[0.08] border border-white/10 text-slate-300">
                   Tract {hoveredTract.tractCode}
                 </span>
               </div>
@@ -579,16 +594,18 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
             <div className="absolute top-3.5 right-3.5 flex flex-col gap-1.5">
               <button
                 type="button"
+                aria-label="Zoom in map"
                 onClick={() => setZoomLevel((z) => Math.min(1.6, +(z + 0.15).toFixed(2)))}
-                className="w-8 h-8 bg-[#0f1724]/95 border border-[#26364f] text-slate-200 hover:text-white hover:bg-slate-800 rounded-lg flex items-center justify-center shadow-md transition-colors"
+                className="w-8 h-8 bg-[#090d16]/90 backdrop-blur-md border border-white/15 text-slate-200 hover:text-white hover:bg-white/[0.1] hover:ring-1 hover:ring-white/25 active:scale-[0.95] rounded-xl flex items-center justify-center shadow-lg transition-all duration-200"
                 title="Zoom in"
               >
                 <Plus className="w-4 h-4" />
               </button>
               <button
                 type="button"
+                aria-label="Zoom out map"
                 onClick={() => setZoomLevel((z) => Math.max(1, +(z - 0.15).toFixed(2)))}
-                className="w-8 h-8 bg-[#0f1724]/95 border border-[#26364f] text-slate-200 hover:text-white hover:bg-slate-800 rounded-lg flex items-center justify-center shadow-md transition-colors"
+                className="w-8 h-8 bg-[#090d16]/90 backdrop-blur-md border border-white/15 text-slate-200 hover:text-white hover:bg-white/[0.1] hover:ring-1 hover:ring-white/25 active:scale-[0.95] rounded-xl flex items-center justify-center shadow-lg transition-all duration-200"
                 title="Zoom out"
               >
                 <Minus className="w-4 h-4" />
@@ -596,8 +613,9 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
               {zoomLevel > 1 && (
                 <button
                   type="button"
+                  aria-label="Reset map zoom"
                   onClick={() => setZoomLevel(1)}
-                  className="w-8 h-8 bg-[#0f1724]/95 border border-[#26364f] text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg flex items-center justify-center shadow-md transition-colors"
+                  className="w-8 h-8 bg-[#090d16]/90 backdrop-blur-md border border-white/15 text-slate-300 hover:text-white hover:bg-white/[0.1] hover:ring-1 hover:ring-white/25 active:scale-[0.95] rounded-xl flex items-center justify-center shadow-lg transition-all duration-200"
                   title="Reset zoom"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
@@ -607,31 +625,31 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
           )}
 
           {/* Bottom-Left Overlay Badge */}
-          <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-lg bg-[#0b111b]/90 border border-[#1e2c42] text-[11px] font-mono text-slate-300 pointer-events-none flex items-center gap-2">
+          <div className="absolute bottom-3.5 left-3.5 px-3 py-1.5 rounded-xl bg-[#090d16]/85 backdrop-blur-md border border-white/10 text-[11px] font-mono text-slate-300 pointer-events-none flex items-center gap-2 shadow-lg">
             <span className="w-2.5 h-2.5 rounded-full border border-dashed border-white inline-block" />
             <span>Dashed ring = 0.5-mi straight-line reach</span>
           </div>
 
           {/* Bottom-Right Overlay Badge */}
-          <div className="hidden sm:block absolute bottom-3 right-3 px-3 py-1.5 rounded-lg bg-[#0b111b]/90 border border-[#1e2c42] text-[11px] text-slate-400 pointer-events-none">
+          <div className="hidden sm:block absolute bottom-3.5 right-3.5 px-3 py-1.5 rounded-xl bg-[#090d16]/85 backdrop-blur-md border border-white/10 text-[11px] text-slate-400 pointer-events-none shadow-lg">
             Base: Google Maps · Tracts: US Census TIGER/Line
           </div>
         </div>
       </div>
 
       {/* Bottom Legend & Interactive Centers-to-Fund Control Bar */}
-      <div className="px-5 py-3.5 bg-[#0b111c] border-t border-[#182336] flex flex-wrap items-center justify-between text-xs gap-4">
+      <div className="px-6 py-4 bg-[#090e1a]/80 backdrop-blur-md border-t border-white/10 flex flex-wrap items-center justify-between text-xs gap-4">
         {/* Left: 5-Swatch Discrete Legend */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <span className="text-slate-400 text-xs">{currentLayerInfo.low}</span>
-          <div className="flex items-center gap-1">
-            <span className="w-5 h-2.5 rounded-[2px] bg-[#182334] border border-slate-700/60" />
-            <span className="w-5 h-2.5 rounded-[2px] bg-[#7c3a21]" />
-            <span className="w-5 h-2.5 rounded-[2px] bg-[#d95b16]" />
-            <span className="w-5 h-2.5 rounded-[2px] bg-[#f97316]" />
-            <span className="w-5 h-2.5 rounded-[2px] bg-[#fed7aa]" />
+          <div className="flex items-center gap-1" role="img" aria-label="Color scale from low to high">
+            <span className="w-5 h-2.5 rounded-[3px] bg-[#182334] border border-white/10" />
+            <span className="w-5 h-2.5 rounded-[3px] bg-[#7c3a21]" />
+            <span className="w-5 h-2.5 rounded-[3px] bg-[#d95b16]" />
+            <span className="w-5 h-2.5 rounded-[3px] bg-[#f97316]" />
+            <span className="w-5 h-2.5 rounded-[3px] bg-[#fed7aa]" />
           </div>
-          <span className="text-slate-300 text-xs font-medium">
+          <span className="text-slate-200 text-xs font-medium">
             {currentLayerInfo.high}
           </span>
         </div>
@@ -642,23 +660,26 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
             Centers to fund:
           </span>
 
-          <div className="inline-flex items-center bg-[#111927] border border-[#26364f] rounded-lg overflow-hidden shadow-sm">
+          <div className="inline-flex items-center bg-[#0d1424] border border-white/10 rounded-xl overflow-hidden shadow-inner">
             <button
               type="button"
               aria-label="Decrease funded centers"
               onClick={() => setCentersToFund((prev) => Math.max(1, prev - 1))}
-              className="w-7 h-7 flex items-center justify-center text-slate-300 hover:bg-slate-800 hover:text-white font-mono text-sm transition-colors"
+              className="w-7 h-7 flex items-center justify-center text-slate-300 hover:bg-white/[0.08] hover:text-white active:scale-[0.95] font-mono text-sm transition-all duration-200"
             >
               −
             </button>
-            <span className="px-2.5 font-mono font-extrabold text-[#f97316] text-xs">
+            <span
+              aria-live="polite"
+              className="px-2.5 font-mono font-extrabold text-[#f97316] text-xs"
+            >
               {centersToFund}
             </span>
             <button
               type="button"
               aria-label="Increase funded centers"
               onClick={() => setCentersToFund((prev) => Math.min(5, prev + 1))}
-              className="w-7 h-7 flex items-center justify-center text-slate-300 hover:bg-slate-800 hover:text-white font-mono text-sm transition-colors"
+              className="w-7 h-7 flex items-center justify-center text-slate-300 hover:bg-white/[0.08] hover:text-white active:scale-[0.95] font-mono text-sm transition-all duration-200"
             >
               +
             </button>
@@ -670,11 +691,13 @@ export const AtlantaMap: React.FC<AtlantaMapProps> = ({
               <button
                 key={idx}
                 type="button"
+                aria-label={`Fund ${idx} cooling ${idx === 1 ? "center" : "centers"}`}
+                aria-pressed={idx <= centersToFund}
                 onClick={() => setCentersToFund(() => idx)}
-                className={`w-4 h-2.5 rounded-[2px] transition-all ${
+                className={`w-4 h-2.5 rounded-[3px] transition-all duration-200 active:scale-[0.92] ${
                   idx <= centersToFund
-                    ? "bg-[#f97316] hover:bg-orange-400"
-                    : "bg-[#1e2c42] hover:bg-slate-700"
+                    ? "bg-[#f97316] hover:bg-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.4)]"
+                    : "bg-white/10 hover:bg-white/25"
                 }`}
                 title={`Fund ${idx} ${idx === 1 ? "center" : "centers"}`}
               />
