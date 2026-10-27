@@ -1,0 +1,16 @@
+/.git/
+/frontend/
+/data/
+/notebooks/
+/sql/
+/scripts/
+/ui_service/
+__pycache__/
+**/__pycache__/
+/.agents/
+/urban_heat_agent/
+/atlanta_heat_agent/
+*.parquet
+*.csv.gz
+.env
+
