@@ -105,6 +105,34 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    if (type === "tracts_scatter") {
+      const query = `
+        SELECT
+          t.geo_id,
+          ROUND(t.centroid_lat, 4) AS lat,
+          ROUND(t.centroid_lon, 4) AS lon,
+          t.population,
+          ROUND(COALESCE(t.share_65_plus, 0) * 100, 1) AS age_65_pct,
+          ROUND(COALESCE(t.no_vehicle_rate, 0) * 100, 1) AS no_car_pct,
+          ROUND(COALESCE(t.poverty_rate, 0) * 100, 1) AS poverty_pct,
+          ROUND(COALESCE(t.median_income, 55000), 0) AS median_income,
+          ROUND(AVG(h.offset_f), 2) AS offset_f
+        FROM \`${PROJECT_ID}.a4i_semantic.dim_tract\` t
+        JOIN \`${PROJECT_ID}.a4i_semantic.fact_heat_cell\` h
+          ON t.geo_id = h.nearest_geo_id
+        WHERE t.population > 800
+        GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
+        ORDER BY offset_f DESC
+        LIMIT 60;
+      `;
+      const [rows] = await client.query({ query });
+      return NextResponse.json({
+        type: "tracts_scatter",
+        count: rows.length,
+        tracts: rows,
+      });
+    }
+
     return NextResponse.json({ error: `Unknown query type: ${type}` }, { status: 400 });
   } catch (err: any) {
     console.error("BigQuery Semantic API error:", err);
