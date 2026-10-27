@@ -1,37 +1,25 @@
-
 FROM python:3.11-slim
 WORKDIR /app
 
-# Create a non-root user
 RUN adduser --disabled-password --gecos "" myuser
 
-# Switch to the non-root user
+# Dependencies first, so code edits don't re-install them
+COPY agent/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# Agent package (ADK app name = folder name) and the planner web app
+COPY --chown=myuser:myuser agent/ /app/agents/urban_heat_agent/
+COPY --chown=myuser:myuser app/ /app/app/
+
 USER myuser
 
-# Set up environment variables - Start
-ENV PATH="/home/myuser/.local/bin:$PATH"
+ENV GOOGLE_GENAI_USE_VERTEXAI=1 \
+    GOOGLE_CLOUD_LOCATION=us-central1 \
+    AGENTS_DIR=/app/agents \
+    APP_NAME=urban_heat_agent \
+    CITY_NAME=Atlanta \
+    PORT=8080
 
-ENV GOOGLE_GENAI_USE_VERTEXAI=1
-ENV GOOGLE_CLOUD_PROJECT=qwiklabs-gcp-04-ec3596addc43
-ENV GOOGLE_CLOUD_LOCATION=us-central1
-
-# Set up environment variables - End
-
-# Install ADK - Start
-RUN pip install google-adk==2.2.0
-# Install ADK - End
-
-# Copy agent - Start
-
-# Set permission
-COPY --chown=myuser:myuser "agent/" "/app/agents/urban_heat_agent/"
-
-# Copy agent - End
-
-# Install Agent Deps - Start
-RUN pip install -r "/app/agents/urban_heat_agent/requirements.txt"
-# Install Agent Deps - End
-
-EXPOSE 8000
-
-CMD adk api_server --with_ui --port=8000 --host=0.0.0.0 --session_service_uri=memory:// --artifact_service_uri=memory:// "/app/agents"
+EXPOSE 8080
+# Planner UI at /planner/, agent API at /run_sse, ADK dev UI at /dev-ui/
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT}

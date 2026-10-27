@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Heat Planner</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#askInput">Skip to the question box</a>
+
+  <header class="top">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg></span>
+      <div>
+        <strong>Heat Planner</strong>
+        <small>Internal city planning tool</small>
+      </div>
+    </div>
+
+    <div class="city">
+      <button id="cityBtn" class="city-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="cityMenu">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span>City: <span id="cityName">Atlanta</span></span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div id="cityMenu" class="menu" hidden></div>
+    </div>
+
+    <p class="status" role="status"><span id="statusDot" class="dot"></span><span id="statusText">Connecting to the agent</span></p>
+  </header>
+
+  <p id="mockBanner" class="banner" hidden>Mock data for UI development. Every number on this screen is synthetic.</p>
+
+  <div class="scenario">
+    <span>Scenario</span>
+    <strong>Fund permanent cooling centers before council votes in three weeks</strong>
+    <span class="chip">Heat Watch: one campaign day</span>
+    <span class="chip">Stations: 7 years</span>
+    <span class="chip" id="freqChip" hidden></span>
+  </div>
+
+  <main class="layout">
+    <section class="chat" aria-label="Conversation with the planner">
+      <div id="messages" class="messages"></div>
+      <div class="suggest" id="suggest" aria-label="Suggested questions"></div>
+      <form id="askForm" class="ask">
+        <label for="askInput">Ask the planner</label>
+        <div class="askrow">
+          <input id="askInput" type="text" autocomplete="off" placeholder="Try “What’s near Peachtree St and 10th St?”">
+          <button id="askBtn" type="submit" class="primary">Send</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="mapcol" aria-label="Map and results">
+      <div class="maphead">
+        <div>
+          <h1 id="mapTitle">Predicted heat offset by tract</h1>
+          <p class="sub" id="mapSub">How much hotter each tract runs than the city average on the campaign day</p>
+        </div>
+        <div class="seg" role="group" aria-label="Map layer">
+          <button type="button" data-layer="offset_f" aria-pressed="true">Heat offset</button>
+          <button type="button" data-layer="no_vehicle_pct" aria-pressed="false">No car</button>
+          <button type="button" data-layer="share_65_plus_pct" aria-pressed="false">Age 65+</button>
+        </div>
+      </div>
+
+      <div class="mapwrap">
+        <div id="map" class="map" role="region" aria-label="Map of tracts and recommended sites"></div>
+        <div id="mapOverlay" class="overlay" hidden></div>
+        <div id="tractCard" class="tractcard" hidden></div>
+      </div>
+
+      <div class="mapfoot">
+        <div class="legend" id="legend" aria-label="Map legend"></div>
+        <div class="budget">
+          <span id="countLabel">Centers to fund</span>
+          <div class="stepper" role="group" aria-labelledby="countLabel">
+            <button id="dec" type="button" aria-label="Fund one fewer center">−</button>
+            <output id="count" aria-live="polite">3</output>
+            <button id="inc" type="button" aria-label="Fund one more center">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Results">
+        <button role="tab" id="tab-site" aria-controls="panel-site" aria-selected="true" type="button">Sites</button>
+        <button role="tab" id="tab-audit" aria-controls="panel-audit" aria-selected="false" type="button" tabindex="-1">Equity audit</button>
+        <button role="tab" id="tab-proposal" aria-controls="panel-proposal" aria-selected="false" type="button" tabindex="-1">Council proposal</button>
+      </div>
+      <div id="panel-site" class="panel" role="tabpanel" aria-labelledby="tab-site"></div>
+      <div id="panel-audit" class="panel" role="tabpanel" aria-labelledby="tab-audit" hidden></div>
+      <div id="panel-proposal" class="panel" role="tabpanel" aria-labelledby="tab-proposal" hidden>
+        <div class="proposal-bar">
+          <p>The agent drafts the memo from the current sites and audit. A planner reviews it before it goes anywhere.</p>
+          <div class="actions">
+            <button id="draftBtn" type="button" class="primary">Draft proposal</button>
+            <button id="printBtn" type="button" disabled>Print or save as PDF</button>
+          </div>
+        </div>
+        <article id="proposalDoc" class="paper" hidden></article>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
