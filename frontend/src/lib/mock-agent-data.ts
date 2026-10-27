@@ -439,7 +439,7 @@ LIMIT 5;`,
                   score: 0.861,
                 },
               ],
-              total_ residents_served_10min: 19420,
+              total_residents_served_10min: 19420,
               min_pairwise_spacing_km: 2.41,
             },
             sqlOrCodeSnippet: `// Greedy Spatial Optimization with 1.5km Haversine Exclusion

@@ -547,13 +547,13 @@ export default function Home() {
   const totalBudgetStr = `$${fundedSites.length * 180}k`;
 
   return (
-    <div className="min-h-screen bg-[#0b0f19] text-slate-100 font-sans selection:bg-[#f97316] selection:text-[#090d16] flex flex-col relative isolate overflow-x-hidden">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-amber-500 selection:text-zinc-950 flex flex-col relative isolate overflow-x-hidden">
       {/* Subtle Ambient Radial Gradient Accents */}
       <div
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
       >
-        <div className="absolute -top-40 left-1/4 w-[640px] h-[380px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.08),transparent_70%)] blur-3xl" />
+        <div className="absolute -top-40 left-1/4 w-[640px] h-[380px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(245,158,11,0.07),transparent_70%)] blur-3xl" />
         <div className="absolute top-1/3 right-1/6 w-[520px] h-[360px] rounded-full bg-[radial-gradient(ellipse_at_center,rgba(56,189,248,0.05),transparent_70%)] blur-3xl" />
       </div>
 
@@ -569,7 +569,7 @@ export default function Home() {
       />
 
       {/* Main Content Container */}
-      <main className="flex-1 w-full max-w-[1440px] mx-auto px-6 sm:px-8 py-6 flex flex-col gap-6">
+      <main className="flex-1 w-full max-w-[1680px] mx-auto px-4 sm:px-6 py-5 flex flex-col gap-5">
         {activeTab === "ask" && (
           <AskTab
             sites={sites}

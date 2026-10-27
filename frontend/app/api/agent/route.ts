@@ -353,6 +353,24 @@ export async function POST(req: NextRequest) {
     }
 
     const executeAgainstAdk = async (baseUrl: string, appName: string) => {
+      if (appName !== "atlanta_heat_agent") {
+        try {
+          const planRes = await fetch(`${baseUrl}/api/v1/plan`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: prompt,
+              session_id: sessionId,
+            }),
+          });
+          if (planRes.ok) {
+            return planRes;
+          }
+        } catch {
+          // Fall back to ADK /run endpoint
+        }
+      }
+
       try {
         await fetch(`${baseUrl}/apps/${appName}/users/${userId}/sessions/${sessionId}`, {
           method: "POST",
@@ -416,7 +434,44 @@ export async function POST(req: NextRequest) {
         };
       }
 
-      const events = await agentRes.json();
+      const rawPayload = await agentRes.json();
+      const events = Array.isArray(rawPayload)
+        ? rawPayload
+        : [
+            {
+              author: appName,
+              content: {
+                role: "model",
+                parts: (rawPayload?.citations || rawPayload?.data_result?.provenance || []).map((p: any) => ({
+                  functionCall: {
+                    name: p.tool_name || p.mcp_tool_name || "rank_candidate_sites",
+                    args: p.parameters || {},
+                  },
+                })),
+              },
+            },
+            {
+              author: appName,
+              content: {
+                role: "user",
+                parts: [
+                  {
+                    functionResponse: {
+                      name: "assemble_placement_recommendation",
+                      response: rawPayload,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              author: appName,
+              content: {
+                role: "model",
+                parts: [{ text: rawPayload?.narrative || rawPayload?.narrative_markdown || "" }],
+              },
+            },
+          ];
       let { fullResponse, structuredData, toolsCalled } = parseStructuredAgentEvents(events);
 
       if (!fullResponse.trim() && structuredData.sites.length > 0) {

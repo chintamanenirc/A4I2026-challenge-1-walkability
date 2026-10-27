@@ -113,3 +113,40 @@ def test_local_sql_files_match_allowed_data_tools_and_avoid_raw_datasets() -> No
         content = path.read_text(encoding="utf-8")
         assert "a4i_climate" not in content, f"{path.name} references raw a4i_climate"
         assert "a4i_core" not in content, f"{path.name} references internal a4i_core"
+
+
+def test_to_api_dict_equity_audit_measures_and_racial_composition() -> None:
+    from agent.heat_planner.api import _to_api_dict
+
+    sample_path = SAMPLES_DIR / "site_selection_atlanta.json"
+    assert sample_path.exists(), f"Missing {sample_path}"
+    raw = sample_path.read_text(encoding="utf-8")
+    resp = AgentApiResponse.model_validate_json(raw)
+
+    api_dict = _to_api_dict(resp)
+    rec = api_dict.get("recommendation")
+    assert rec is not None, "recommendation should not be None"
+    ea = rec.get("equity_audit")
+    assert ea is not None, "equity_audit should not be None"
+
+    measures = ea.get("measures", [])
+    assert len(measures) == 4, f"Expected 4 measures, got {len(measures)}: {measures}"
+    measure_names = {m["measure"] for m in measures}
+    assert measure_names == {"poverty_rate", "no_vehicle_rate", "share_65_plus", "median_income"}
+
+    for m in measures:
+        assert "measure" in m
+        assert "sites_value" in m
+        assert "city_value" in m
+        assert "ratio" in m
+
+    racial = ea.get("racial_composition", [])
+    assert len(racial) == 2, f"Expected 2 racial composition rows, got {len(racial)}: {racial}"
+    racial_groups = {r["group"] for r in racial}
+    assert racial_groups == {"Black", "White"}
+
+    for r in racial:
+        assert "group" in r
+        assert "sites_share" in r
+        assert "city_share" in r
+

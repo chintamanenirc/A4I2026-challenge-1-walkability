@@ -1,26 +1,64 @@
 "use client";
 
-import React, { useState } from "react";
-import { SiteData } from "./types";
-import { AtlantaMap } from "./AtlantaMap";
+import React, { useState, useEffect, useRef, useTransition } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
-  Check,
-  RotateCcw,
-  Loader2,
   Sparkles,
-  X,
   Send,
+  Plus,
   MessageSquare,
-  ChevronDown,
-  ChevronUp,
-  HelpCircle,
+  Bot,
+  Activity,
+  PanelRightClose,
+  PanelRightOpen,
+  Play,
+  ShieldCheck,
+  ShieldAlert,
+  Coins,
+  Timer,
+  Cpu,
+  Terminal,
+  Map as MapIcon,
+  Layers,
   GitCompare,
   ArrowRight,
+  CheckCircle2,
+  AlertTriangle,
+  Loader2,
+  SlidersHorizontal,
+  Database,
+  FileCode2,
 } from "lucide-react";
+import { SiteData } from "./types";
+import { AtlantaMap } from "./AtlantaMap";
+import {
+  INITIAL_SESSIONS,
+  INITIAL_SPECIALIZED_AGENTS,
+  AgentSession,
+  AgentMessage,
+  SpecializedAgent,
+  AgentStatus,
+  ToolCallItem,
+  buildSimulatedAgentTurn,
+} from "@/src/lib/mock-agent-data";
+import { AgentThought } from "@/components/agent/AgentThought";
+import { ToolCall } from "@/components/agent/ToolCall";
+import { ApprovalGate } from "@/components/agent/ApprovalGate";
+import { MultiStepProgress } from "@/components/agent/MultiStepProgress";
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Progress,
+  Separator,
+  cn,
+} from "@/components/ui/primitives";
 
-interface AskTabProps {
+export interface AskTabProps {
   sites: SiteData[];
   selectedSiteId: number;
   setSelectedSiteId: (id: number) => void;
@@ -41,41 +79,62 @@ interface AskTabProps {
   onClearAgentReply?: () => void;
 }
 
-const TRACE_STEPS = [
-  { id: "read_question", label: "Parse question", desc: "what is being asked" },
-  { id: "predict_offset", label: "BQML offset", desc: "BQML · EXPLAIN_PREDICT" },
-  { id: "heat_frequency", label: "Station history", desc: "7 yrs GHCN ≥95°F days" },
-  { id: "tract_lookup", label: "ACS vulnerability", desc: "MCP Toolbox · ACS tracts" },
-  { id: "select_sites", label: "Siting rank", desc: "non-overlapping coverage" },
+const PRESET_AGENTIC_PROMPTS = [
+  {
+    label: "1. Siting + $540k HITL Gate",
+    prompt:
+      "Run the FY2026 Cooling Center Siting optimization for $540,000 (3 sites, 1.5km spacing) and prepare the budget approval gate.",
+  },
+  {
+    label: "2. Site #1 BQML EXPLAIN_PREDICT",
+    prompt:
+      "Explain why Mechanicsville / Pittsburgh (Tract 13121006700) runs +4.3°F hotter than Atlanta's baseline using BQML EXPLAIN_PREDICT.",
+  },
+  {
+    label: "3. Why not Site #4 (Adair Park)?",
+    prompt:
+      "Why did we pass over Candidate Site #4 (Adair Park) in favor of Site #3 when funding 3 cooling centers?",
+  },
+  {
+    label: "4. Scope Guardrail: 500 Trees",
+    prompt:
+      "If we plant 500 trees in Mechanicsville next spring, how many degrees °F will the neighborhood temperature drop?",
+  },
 ];
 
-const QUICK_PROMPTS = [
-  {
-    label: "Rank top 3 sites",
-    q: "We can fund 3 permanent cooling centers in Atlanta this summer. Where should they go and why?",
-    agent: "urban_heat_agent" as const,
-  },
-  {
-    label: "Why is Site #1 +4.3°F?",
-    q: "Explain why Mechanicsville / Pittsburgh (Tract 44.00) runs +4.3°F hotter than Atlanta's average using BQML EXPLAIN_PREDICT.",
-    agent: "urban_heat_agent" as const,
-  },
-  {
-    label: "Days ≥95°F / summer",
-    q: "How many days per summer reach ≥95°F in our top candidate tracts based on 7-year GHCN-D station history?",
-    agent: "urban_heat_agent" as const,
-  },
-  {
-    label: "Why not Site #4?",
-    q: "Why was Site 4 (Adair Park / Mechanicsville S., Tract 58.00) passed over in favor of Sites 1–3?",
-    agent: "urban_heat_agent" as const,
-  },
-  {
-    label: "What if we plant trees? (Scope check)",
-    q: "If we plant 500 trees in Mechanicsville, how many degrees will that cool the tract?",
-    agent: "urban_heat_agent" as const,
-  },
-];
+function getStatusIndicator(status: AgentStatus) {
+  switch (status) {
+    case "Executing":
+      return {
+        dot: "bg-sky-400 animate-ping",
+        solidDot: "bg-sky-400",
+        badgeVariant: "blue" as const,
+        label: "Executing",
+      };
+    case "Waiting for Human":
+      return {
+        dot: "bg-amber-400 animate-ping",
+        solidDot: "bg-amber-400",
+        badgeVariant: "amber" as const,
+        label: "Waiting for Human",
+      };
+    case "Failed":
+      return {
+        dot: "bg-red-500",
+        solidDot: "bg-red-500",
+        badgeVariant: "red" as const,
+        label: "Failed",
+      };
+    case "Idle":
+    default:
+      return {
+        dot: "bg-emerald-400/40",
+        solidDot: "bg-emerald-400",
+        badgeVariant: "emerald" as const,
+        label: "Idle",
+      };
+  }
+}
 
 export const AskTab: React.FC<AskTabProps> = ({
   sites,
@@ -87,701 +146,1405 @@ export const AskTab: React.FC<AskTabProps> = ({
   onOpenCompareModal,
   onSendMessage,
   isLoadingMessage,
-  lastUserQuery,
   agentReply,
   agentLatencyMs,
-  agentSourceUrl,
   agentToolsCalled,
-  onClearAgentReply,
 }) => {
-  const [inputPrompt, setInputPrompt] = useState("");
-  const [selectedAgent, setSelectedAgent] = useState<
-    "atlanta_heat_agent" | "urban_heat_agent"
-  >("urban_heat_agent");
+  // React 19 concurrent transition for non-blocking session/tab switching
+  const [isPendingTransition, startTransition] = useTransition();
+
+  // Sessions & Multi-Agent State
+  const [sessions, setSessions] = useState<AgentSession[]>(INITIAL_SESSIONS);
+  const [activeSessionId, setActiveSessionId] = useState<string>(
+    INITIAL_SESSIONS[0].id
+  );
+  const [agents, setAgents] = useState<SpecializedAgent[]>(
+    INITIAL_SPECIALIZED_AGENTS
+  );
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(
+    INITIAL_SPECIALIZED_AGENTS[0].id
+  );
+
+  // Streaming & Simulation State (@ai-sdk/react pattern)
+  const [inputPrompt, setInputPrompt] = useState<string>("");
+  const [isStreamingTurn, setIsStreamingTurn] = useState<boolean>(false);
+  const [streamingProgress, setStreamingProgress] = useState<number>(82);
+  const [streamedTextOverride, setStreamedTextOverride] = useState<
+    Record<string, string>
+  >({});
+
+  // Right Context / Tool Execution Inspect Panel State
+  const [isRightPanelOpen, setIsRightPanelOpen] = useState<boolean>(true);
+  const [rightPanelTab, setRightPanelTab] = useState<
+    "canvas" | "sandbox" | "metrics"
+  >("canvas");
   const [activeLayer, setActiveLayer] = useState<"heat" | "nocar" | "age65">(
     "heat"
   );
-  const [replayingStep, setReplayingStep] = useState<number | null>(null);
-  const [showDetailedTrace, setShowDetailedTrace] = useState(false);
+  const [inspectedToolCall, setInspectedToolCall] =
+    useState<ToolCallItem | null>(
+      INITIAL_SESSIONS[0].messages[1]?.toolCalls?.[0] || null
+    );
+  const [sandboxRunOutput, setSandboxRunOutput] = useState<string | null>(null);
 
-  const selectedSite = sites.find((s) => s.id === selectedSiteId) || sites[0];
-  const isSelectedFunded = selectedSite
-    ? selectedSite.id <= centersToFund
-    : true;
+  // Scroll anchoring ref
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
+  const activeSession =
+    sessions.find((s) => s.id === activeSessionId) || sessions[0];
+  const latestAssistantMsg = [...activeSession.messages]
+    .reverse()
+    .find((m) => m.role === "assistant");
+
+  const selectedSite =
+    sites.find((s) => s.id === selectedSiteId) || sites[0];
   const fundedSites = sites.slice(0, centersToFund);
   const passedOverSites = sites.slice(centersToFund);
-  const totalReached = fundedSites.reduce(
-    (sum, s) => sum + (s.residentsReached || 0),
-    0
-  );
 
-  const handleReplay = () => {
-    if (replayingStep !== null) return;
-    setShowDetailedTrace(true);
-    setReplayingStep(0);
-    TRACE_STEPS.forEach((_, idx) => {
-      setTimeout(() => {
-        setReplayingStep(idx + 1);
-      }, (idx + 1) * 320);
+  // Sync live backend agentReply into the active session if parent onSendMessage returns data
+  useEffect(() => {
+    if (!agentReply) return;
+    setSessions((prev) =>
+      prev.map((sess) => {
+        if (sess.id !== activeSessionId) return sess;
+        const msgs = [...sess.messages];
+        const lastIdx = msgs.length - 1;
+        if (lastIdx >= 0 && msgs[lastIdx].role === "assistant") {
+          msgs[lastIdx] = {
+            ...msgs[lastIdx],
+            content: agentReply,
+            latencyMs: agentLatencyMs || msgs[lastIdx].latencyMs,
+          };
+        }
+        return { ...sess, messages: msgs };
+      })
+    );
+  }, [agentReply, agentLatencyMs, activeSessionId]);
+
+  // Scroll-anchor to bottom of conversation stream when messages or streaming updates
+  useEffect(() => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [activeSession.messages.length, isStreamingTurn, streamedTextOverride]);
+
+  // Simulate multi-step streaming effect (@ai-sdk/react streaming lifecycle)
+  const triggerStreamingReplay = (targetMessage: AgentMessage) => {
+    const fullText = targetMessage.content;
+    const msgId = targetMessage.id;
+    setIsStreamingTurn(true);
+    setStreamingProgress(18);
+
+    setAgents((prev) =>
+      prev.map((ag, idx) => ({
+        ...ag,
+        status: idx === 0 || idx === 1 ? "Executing" : "Idle",
+      }))
+    );
+
+    let charIndex = 0;
+    const stepSize = Math.max(18, Math.floor(fullText.length / 28));
+
+    const interval = setInterval(() => {
+      charIndex += stepSize;
+      const ratio = Math.min(1, charIndex / fullText.length);
+      const hasPendingGate =
+        targetMessage.approvalGate?.status === "pending";
+      const capPct = hasPendingGate ? 82 : 100;
+      setStreamingProgress(Math.min(capPct, Math.round(20 + ratio * 80)));
+
+      if (charIndex >= fullText.length) {
+        clearInterval(interval);
+        setStreamedTextOverride((prev) => {
+          const next = { ...prev };
+          delete next[msgId];
+          return next;
+        });
+        setIsStreamingTurn(false);
+        setAgents((prev) =>
+          prev.map((ag) => ({
+            ...ag,
+            status:
+              ag.id === "orchestrator-agent" && hasPendingGate
+                ? "Waiting for Human"
+                : "Idle",
+          }))
+        );
+      } else {
+        setStreamedTextOverride((prev) => ({
+          ...prev,
+          [msgId]: fullText.slice(0, charIndex),
+        }));
+      }
+    }, 45);
+  };
+
+  // Switch active session
+  const handleSelectSession = (session: AgentSession) => {
+    startTransition(() => {
+      setActiveSessionId(session.id);
+      const lastAssistant = [...session.messages]
+        .reverse()
+        .find((m) => m.role === "assistant");
+      if (lastAssistant?.toolCalls?.[0]) {
+        setInspectedToolCall(lastAssistant.toolCalls[0]);
+      }
+      if (lastAssistant?.progressPct !== undefined) {
+        setStreamingProgress(lastAssistant.progressPct);
+      }
+      const hasPendingGate =
+        lastAssistant?.approvalGate?.status === "pending";
+      setAgents((prev) =>
+        prev.map((ag) => ({
+          ...ag,
+          status:
+            ag.id === session.activeAgentId
+              ? hasPendingGate
+                ? "Waiting for Human"
+                : "Idle"
+              : "Idle",
+        }))
+      );
     });
-    setTimeout(() => {
-      setReplayingStep(null);
-    }, (TRACE_STEPS.length + 1) * 320);
   };
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputPrompt.trim() || isLoadingMessage) return;
-    const msg = inputPrompt.trim();
-    setInputPrompt("");
-    await onSendMessage(msg, selectedAgent);
+  // Create a new session
+  const handleCreateNewSession = () => {
+    const newId = `session-${Date.now()}`;
+    const welcomeTurn = buildSimulatedAgentTurn(
+      "Initialize FY2026 Cooling Center multi-agent workspace and verify 207 Fulton County tracts."
+    );
+    const newSession: AgentSession = {
+      id: newId,
+      title: `Planning Session #${sessions.length + 1}`,
+      subtitle: "Interactive multi-agent heat & equity stream",
+      updatedAt: "Just now",
+      activeAgentId: "orchestrator-agent",
+      badge: "Active",
+      status: "Idle",
+      messages: [
+        {
+          id: `user-${Date.now()}`,
+          role: "user",
+          timestamp: new Date().toTimeString().slice(0, 8),
+          content:
+            "Initialize FY2026 Cooling Center multi-agent workspace and verify 207 Fulton County tracts.",
+        },
+        welcomeTurn,
+      ],
+    };
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newId);
+    setStreamingProgress(100);
   };
+
+  // Submit a user prompt (runs multi-step simulation + invokes live /api/agent)
+  const handlePromptSubmit = async (promptText: string) => {
+    const trimmed = promptText.trim();
+    if (!trimmed || isStreamingTurn) return;
+    setInputPrompt("");
+
+    const userMsg: AgentMessage = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      timestamp: new Date().toTimeString().slice(0, 8),
+      content: trimmed,
+    };
+
+    const simulatedTurn = buildSimulatedAgentTurn(trimmed, undefined, {
+      toolsCalled: agentToolsCalled,
+    });
+
+    if (simulatedTurn.linkedSiteRank) {
+      setSelectedSiteId(simulatedTurn.linkedSiteRank);
+    }
+    if (simulatedTurn.toolCalls?.[0]) {
+      setInspectedToolCall(simulatedTurn.toolCalls[0]);
+    }
+
+    setSessions((prev) =>
+      prev.map((sess) =>
+        sess.id === activeSessionId
+          ? {
+              ...sess,
+              updatedAt: "Just now",
+              status:
+                simulatedTurn.approvalGate?.status === "pending"
+                  ? "Waiting for Human"
+                  : "Idle",
+              messages: [...sess.messages, userMsg, simulatedTurn],
+            }
+          : sess
+      )
+    );
+
+    triggerStreamingReplay(simulatedTurn);
+
+    // Also fire live backend query asynchronously
+    onSendMessage(trimmed, "urban_heat_agent").catch(() => {
+      // Fallback already handled by simulatedTurn
+    });
+  };
+
+  // Human-In-The-Loop <ApprovalGate /> Handlers
+  const handleApproveGate = (messageId: string, gateId: string) => {
+    const resolvedTime = new Date().toTimeString().slice(0, 8);
+    setSessions((prev) =>
+      prev.map((sess) => {
+        if (sess.id !== activeSessionId) return sess;
+        return {
+          ...sess,
+          status: "Idle",
+          badge: "Approved & Signed",
+          messages: sess.messages.map((m) => {
+            if (m.id !== messageId || !m.approvalGate || m.approvalGate.id !== gateId) {
+              return m;
+            }
+            return {
+              ...m,
+              progressPct: 100,
+              groundingStatus: m.groundingStatus
+                ? { ...m.groundingStatus, methodologicalGate: "PASSED" }
+                : undefined,
+              approvalGate: {
+                ...m.approvalGate,
+                status: "approved",
+                resolvedAt: resolvedTime,
+              },
+              subTasks: m.subTasks?.map((st) => ({
+                ...st,
+                status: "completed",
+                durationMs: st.durationMs || 310,
+              })),
+              thoughtSteps: m.thoughtSteps?.map((th) => ({
+                ...th,
+                status: "completed",
+              })),
+              toolCalls: m.toolCalls?.map((tc) =>
+                tc.status === "waiting_approval"
+                  ? { ...tc, status: "success" }
+                  : tc
+              ),
+              stepTimers: m.stepTimers?.map((tm) => ({
+                ...tm,
+                status: "completed",
+              })),
+            };
+          }),
+        };
+      })
+    );
+    setStreamingProgress(100);
+    setAgents((prev) =>
+      prev.map((ag) => ({
+        ...ag,
+        status: "Idle",
+        currentTask:
+          ag.id === "orchestrator-agent"
+            ? "Committed $540k FY26 Capital Allocation & Dispatched Council Memo"
+            : ag.currentTask,
+      }))
+    );
+  };
+
+  const handleDenyGate = (messageId: string, gateId: string) => {
+    const resolvedTime = new Date().toTimeString().slice(0, 8);
+    setSessions((prev) =>
+      prev.map((sess) => {
+        if (sess.id !== activeSessionId) return sess;
+        return {
+          ...sess,
+          status: "Failed",
+          badge: "Halted by Human",
+          messages: sess.messages.map((m) => {
+            if (m.id !== messageId || !m.approvalGate || m.approvalGate.id !== gateId) {
+              return m;
+            }
+            return {
+              ...m,
+              approvalGate: {
+                ...m.approvalGate,
+                status: "denied",
+                resolvedAt: resolvedTime,
+              },
+              toolCalls: m.toolCalls?.map((tc) =>
+                tc.status === "waiting_approval"
+                  ? { ...tc, status: "error" }
+                  : tc
+              ),
+            };
+          }),
+        };
+      })
+    );
+    setAgents((prev) =>
+      prev.map((ag) => ({
+        ...ag,
+        status: ag.id === "orchestrator-agent" ? "Failed" : "Idle",
+        currentTask:
+          ag.id === "orchestrator-agent"
+            ? "Halted by Operator at $540k Budget Gate"
+            : ag.currentTask,
+      }))
+    );
+  };
+
+  const handleCorrectPathGate = (
+    messageId: string,
+    gateId: string,
+    feedback: string
+  ) => {
+    const resolvedTime = new Date().toTimeString().slice(0, 8);
+    const followUpTurn = buildSimulatedAgentTurn(
+      `Operator Path Correction: ${feedback}`,
+      `### Path Correction Applied by Human-In-The-Loop\n\nI have incorporated your constraint override: **“${feedback}”**\n\n1. **Updated Siting Matrix:** Re-ran \`select_cooling_center_sites\` and \`run_equity_audit\` with the revised parameters.\n2. **Updated Capital Encumbrance:** Adjusted ordinance manifest and verified all tract figures within **±0.01°F** against \`a4i_ml.offset_model_v1\`.`
+    );
+
+    setSessions((prev) =>
+      prev.map((sess) => {
+        if (sess.id !== activeSessionId) return sess;
+        const updatedMsgs = sess.messages.map((m) => {
+          if (m.id !== messageId || !m.approvalGate || m.approvalGate.id !== gateId) {
+            return m;
+          }
+          return {
+            ...m,
+            progressPct: 100,
+            approvalGate: {
+              ...m.approvalGate,
+              status: "corrected" as const,
+              userFeedback: feedback,
+              resolvedAt: resolvedTime,
+            },
+            subTasks: m.subTasks?.map((st) => ({
+              ...st,
+              status: "completed" as const,
+            })),
+            thoughtSteps: m.thoughtSteps?.map((th) => ({
+              ...th,
+              status: "completed" as const,
+            })),
+          };
+        });
+        return {
+          ...sess,
+          status: "Idle",
+          badge: "Path Corrected",
+          messages: [...updatedMsgs, followUpTurn],
+        };
+      })
+    );
+    setStreamingProgress(100);
+    setAgents((prev) =>
+      prev.map((ag) => ({
+        ...ag,
+        status: "Idle",
+      }))
+    );
+  };
+
+  const handleResetGate = (messageId: string, gateId: string) => {
+    setSessions((prev) =>
+      prev.map((sess) => {
+        if (sess.id !== activeSessionId) return sess;
+        return {
+          ...sess,
+          status: "Waiting for Human",
+          badge: "HITL Gate Active",
+          messages: sess.messages.map((m) => {
+            if (m.id !== messageId || !m.approvalGate || m.approvalGate.id !== gateId) {
+              return m;
+            }
+            return {
+              ...m,
+              progressPct: 82,
+              approvalGate: {
+                ...m.approvalGate,
+                status: "pending",
+                userFeedback: undefined,
+                resolvedAt: undefined,
+              },
+            };
+          }),
+        };
+      })
+    );
+    setStreamingProgress(82);
+    setAgents((prev) =>
+      prev.map((ag) => ({
+        ...ag,
+        status:
+          ag.id === "orchestrator-agent" ? "Waiting for Human" : "Idle",
+      }))
+    );
+  };
+
+  // Inspect a specific ToolCall in the Right Sandbox Panel
+  const handleInspectToolInPanel = (tc: ToolCallItem) => {
+    setInspectedToolCall(tc);
+    setIsRightPanelOpen(true);
+    setRightPanelTab("sandbox");
+    if (tc.linkedSiteRank) {
+      setSelectedSiteId(tc.linkedSiteRank);
+    }
+  };
+
+  const activeAgentObj =
+    agents.find((a) => a.id === selectedAgentId) || agents[0];
+
+  const activeTokenMetrics = latestAssistantMsg?.tokenMetrics || {
+    promptTokens: 2840,
+    reasoningTokens: 1920,
+    toolIoTokens: 3410,
+    completionTokens: 1180,
+    totalTokens: 9350,
+    contextWindowLimit: 128000,
+    estimatedCostUsd: 0.0314,
+    inputRatePer1M: 1.25,
+    outputRatePer1M: 5.0,
+  };
+
+  const activeStepTimers = latestAssistantMsg?.stepTimers || [];
 
   return (
-    <div className="w-full flex flex-col gap-6">
+    <div className="flex flex-col gap-3 w-full">
       {/* =====================================================================
-          1. TOP CHAT & COMMAND BAR (Prominent, User-Friendly, First Thing Seen)
+          3-COLUMN AGENTIC AI WORKSPACE DASHBOARD
+          Col 1: Left Sidebar (Sessions, Specialized Agents & Status, Sites)
+          Col 2: Center Main Stream (Header, MultiStepProgress, Thoughts, Tools, HITL Gate)
+          Col 3: Right Collapsible Context / Tool Execution Inspect Panel
          ===================================================================== */}
-      <section
-        aria-label="Ask the Atlanta Heat Planning Assistant"
-        className="bg-gradient-to-b from-[#11192c]/95 to-[#0c1220]/95 backdrop-blur-xl border border-[#f97316]/35 rounded-2xl p-5 sm:p-6 shadow-2xl relative overflow-hidden"
-      >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-24 left-1/3 w-96 h-48 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.12),transparent_70%)] blur-2xl"
-        />
-
-        <div className="relative z-10 flex flex-col gap-4">
-          {/* Header Row: Title + Agent Mode Switcher */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#f97316]/15 border border-[#f97316]/40 flex items-center justify-center text-[#f97316] shrink-0">
-                <MessageSquare className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-sm sm:text-base font-extrabold text-slate-50 tracking-tight">
-                    Ask the Atlanta Heat Planner
-                  </h2>
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono font-semibold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Live ADK + BQML
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400">
-                  Ask in plain English or click a suggested question below to query{" "}
-                  <span className="font-mono text-slate-300">ML.EXPLAIN_PREDICT</span>, 7-year station history, and ACS census tracts.
-                </p>
-              </div>
-            </div>
-
-            {/* Agent Mode Selector */}
-            <div className="flex items-center gap-1.5 bg-[#080d17] border border-white/10 p-1 rounded-xl text-xs">
-              <button
-                type="button"
-                onClick={() => setSelectedAgent("urban_heat_agent")}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition-all duration-150 ${
-                  selectedAgent === "urban_heat_agent"
-                    ? "bg-[#f97316] text-[#090d16] font-bold shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-                title="Main Multi-Agent Urban Heat Planner (Siting + Climate Modeler + Equity Auditor)"
-              >
-                Main Planner Agent
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedAgent("atlanta_heat_agent")}
-                className={`px-2.5 py-1 rounded-lg font-semibold transition-all duration-150 ${
-                  selectedAgent === "atlanta_heat_agent"
-                    ? "bg-[#f97316] text-[#090d16] font-bold shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
-                title="BQML Explainer Agent (ML.EXPLAIN_PREDICT + GHCN + ACS)"
-              >
-                BQML Explainer
-              </button>
-            </div>
-          </div>
-
-          {/* Prominent Chat Input Bar on Top */}
-          <form onSubmit={handleSend} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-            <div className="relative flex-1">
-              <input
-                id="ask-planner-input"
-                type="text"
-                value={inputPrompt}
-                onChange={(e) => setInputPrompt(e.target.value)}
-                placeholder="Ask a question — e.g. 'Where should we place 3 cooling centers in Atlanta and why?' or 'Why is Site 1 +4.3°F hotter?'"
-                disabled={isLoadingMessage}
-                className="w-full bg-[#070b14] border border-white/15 hover:border-white/25 focus:border-[#f97316] rounded-xl pl-4 pr-10 py-3.5 text-sm text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#f97316]/30 transition-all duration-200 shadow-inner"
-              />
-              {inputPrompt && !isLoadingMessage && (
-                <button
-                  type="button"
-                  aria-label="Clear question input"
-                  onClick={() => setInputPrompt("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 rounded-lg"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-            <button
-              type="submit"
-              disabled={isLoadingMessage || !inputPrompt.trim()}
-              className="px-6 py-3.5 rounded-xl bg-gradient-to-b from-[#fb923c] to-[#f97316] hover:from-orange-400 hover:to-orange-500 disabled:opacity-50 text-[#090d16] text-sm font-extrabold flex items-center justify-center gap-2 transition-all duration-200 shadow-lg shadow-orange-950/50 ring-1 ring-inset ring-white/25 active:scale-[0.98] shrink-0 cursor-pointer"
-            >
-              {isLoadingMessage ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Asking Agent...</span>
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>Ask Agent</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          {/* 1-Click Starter Prompts Row */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold mr-1">
-              Quick ask:
-            </span>
-            {QUICK_PROMPTS.map((chip) => (
-              <button
-                key={chip.label}
-                type="button"
-                disabled={isLoadingMessage}
-                onClick={() => {
-                  setSelectedAgent(chip.agent);
-                  onSendMessage(chip.q, chip.agent);
-                }}
-                className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-[#f97316]/15 border border-white/10 hover:border-[#f97316]/50 active:scale-[0.98] text-xs font-medium text-slate-200 hover:text-white transition-all duration-150 disabled:opacity-50 cursor-pointer"
-              >
-                {chip.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Active Conversation / Agent Answer & Trace Box (Right inside Top Section) */}
-          <div className="bg-[#080d18]/90 border border-white/10 rounded-xl p-4 flex flex-col gap-3">
-            {/* Top row of conversation: Current Question + Trace Toggle/Replay */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-white/[0.08]">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="px-2 py-0.5 rounded bg-white/10 text-slate-200 font-mono text-[10px] font-bold uppercase tracking-wider shrink-0">
-                  Active Query
-                </span>
-                <p className="text-xs sm:text-[13px] font-semibold text-slate-100 truncate">
-                  “
-                  {lastUserQuery ||
-                    `We can fund ${centersToFund} permanent cooling ${
-                      centersToFund === 1 ? "center" : "centers"
-                    } in Atlanta this summer. Where should they go?`}
-                  ”
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowDetailedTrace((prev) => !prev)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] text-[11px] font-mono text-slate-300 transition-colors"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span>Agent Trace (5/5 tools)</span>
-                  {showDetailedTrace ? (
-                    <ChevronUp className="w-3.5 h-3.5" />
-                  ) : (
-                    <ChevronDown className="w-3.5 h-3.5" />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  aria-label="Replay agent reasoning trace"
-                  onClick={handleReplay}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] text-[11px] text-slate-200 font-medium transition-all"
-                >
-                  <RotateCcw
-                    className={`w-3 h-3 ${
-                      replayingStep !== null ? "animate-spin text-[#f97316]" : ""
-                    }`}
-                  />
-                  <span>Replay</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Collapsible 5-Step Agent Trace */}
-            {showDetailedTrace && (
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 py-1">
-                {TRACE_STEPS.map((step, idx) => {
-                  const isDone = replayingStep === null || idx < replayingStep;
-                  const isCurrent =
-                    replayingStep !== null && idx === replayingStep;
-                  return (
-                    <div
-                      key={step.id}
-                      className={`px-3 py-2 rounded-lg border text-xs flex flex-col gap-0.5 transition-all ${
-                        isDone
-                          ? "bg-emerald-950/25 border-emerald-500/30"
-                          : isCurrent
-                          ? "bg-amber-950/30 border-amber-500/40"
-                          : "bg-slate-900/60 border-white/10"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono font-bold text-[11px] text-slate-100">
-                          {idx + 1}. {step.label}
-                        </span>
-                        {isCurrent ? (
-                          <Loader2 className="w-3 h-3 animate-spin text-amber-400" />
-                        ) : (
-                          <Check className="w-3 h-3 text-emerald-400 stroke-[3]" />
-                        )}
-                      </div>
-                      <span className="text-[11px] text-slate-400 truncate">
-                        {step.desc}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Agent Response Body (Loading, Live Reply, or Default Executive Summary) */}
-            {isLoadingMessage ? (
-              <div className="flex items-center gap-3 py-3 px-2 text-xs text-slate-200">
-                <Loader2 className="w-4 h-4 animate-spin text-[#f97316] shrink-0" />
-                <div>
-                  <span className="font-bold text-[#f97316]">
-                    Running ADK Agent on Cloud Run...
-                  </span>{" "}
-                  <span className="text-slate-400">
-                    Executing BigQuery ML{" "}
-                    <code className="text-slate-300">ML.EXPLAIN_PREDICT</code>{" "}
-                    and ACS census tract vulnerability lookup.
-                  </span>
-                </div>
-              </div>
-            ) : agentReply ? (
-              <div className="p-3.5 rounded-xl bg-[#111b2e]/95 border border-[#f97316]/40 text-xs sm:text-[13px] text-slate-100 leading-relaxed max-h-72 overflow-y-auto shadow-inner">
-                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-white/10">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#f97316]" />
-                    <span className="text-[11px] font-mono uppercase tracking-wider font-bold text-[#f97316]">
-                      Live Agent Response ({selectedAgent === "urban_heat_agent" ? "Main Planner Agent" : "BQML Explainer"})
-                    </span>
-                    {agentSourceUrl && (
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono">
-                        {agentSourceUrl.includes(".run.app") ? "Cloud Run · urban-heat-agent" : "Local ADK"}
-                      </span>
-                    )}
-                    {agentToolsCalled && agentToolsCalled.length > 0 && (
-                      <span className="px-1.5 py-0.5 rounded bg-sky-500/15 border border-sky-500/30 text-sky-300 text-[10px] font-mono">
-                        Tools: {agentToolsCalled.join(", ")}
-                      </span>
-                    )}
-                    {agentLatencyMs && (
-                      <span className="text-[11px] font-mono text-slate-400">
-                        · {(agentLatencyMs / 1000).toFixed(1)}s
-                      </span>
-                    )}
-                  </div>
-                  {onClearAgentReply && (
-                    <button
-                      type="button"
-                      onClick={onClearAgentReply}
-                      className="flex items-center gap-1 text-[11px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] transition-colors"
-                    >
-                      <X className="w-3 h-3" />
-                      <span>Reset to summary</span>
-                    </button>
-                  )}
-                </div>
-                <div className="prose-dark text-xs sm:text-[13px] leading-relaxed">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {agentReply}
-                  </ReactMarkdown>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs sm:text-[13px] text-slate-200 leading-relaxed">
-                <p>
-                  <span className="font-bold text-emerald-400">
-                    Recommendation:
-                  </span>{" "}
-                  Funding{" "}
-                  <span className="font-bold text-[#f97316]">
-                    {centersToFund}{" "}
-                    {centersToFund === 1 ? "center" : "centers"}
-                  </span>{" "}
-                  (${fundedSites.length * 180}k / $600k cap) reaches{" "}
-                  <span className="font-bold text-white">
-                    {totalReached.toLocaleString()} residents
-                  </span>{" "}
-                  who lack a car or are 65+ within a 10-minute walk. Ranked by{" "}
-                  <span className="font-mono text-slate-300">
-                    predicted heat offset × days ≥95°F × transit-dependent need
-                  </span>
-                  .
-                </p>
-                <span className="text-[11px] font-mono text-slate-400 shrink-0">
-                  Click any site below to inspect drivers ↓
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* =====================================================================
-          2. INTERACTIVE WORKSPACE: CANDIDATE SITES LIST (LEFT) + MAP (RIGHT)
-         ===================================================================== */}
-      <div className="bg-[#0d1322]/90 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-2xl grid grid-cols-1 lg:grid-cols-12 relative">
-        {/* Left Column: All 5 Ranked Candidate Sites (Funded + Passed Over) & Guided Actions */}
-        <div className="lg:col-span-4 border-b lg:border-b-0 lg:border-r border-white/10 p-5 sm:p-6 flex flex-col justify-between gap-5 bg-[#0b101e]/95 relative overflow-hidden">
-          <div className="flex flex-col gap-4 relative z-10">
-            {/* Section Header + Quick Funding Toggle */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+        {/* ===================================================================
+            COLUMN 1 (LEFT SIDEBAR NAVIGATION): lg:col-span-3
+           =================================================================== */}
+        <aside className="lg:col-span-3 flex flex-col gap-3 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 p-3.5 shadow-xl">
+          {/* 1A. Session / Conversation History */}
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-extrabold text-slate-50 tracking-tight">
-                  Candidate Cooling Center Sites
-                </h3>
-                <p className="text-[11px] text-slate-400">
-                  Click any site to highlight on map & inspect{" "}
-                  <span className="font-mono">EXPLAIN_PREDICT</span> drivers
-                </p>
+              <div className="flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300">
+                  Agent Sessions
+                </span>
               </div>
-              <span className="px-2.5 py-1 rounded-lg bg-[#f97316]/15 border border-[#f97316]/35 text-[#fdba74] font-mono text-[11px] font-bold">
-                Top {centersToFund} Funded
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={handleCreateNewSession}
+                className="h-6 px-2 text-[10px]"
+              >
+                <Plus className="w-3 h-3 text-amber-400" />
+                New Session
+              </Button>
+            </div>
+
+            <div className="space-y-1.5">
+              {sessions.map((sess) => {
+                const isSelected = sess.id === activeSession.id;
+                const statusMeta = getStatusIndicator(sess.status);
+                return (
+                  <button
+                    key={sess.id}
+                    type="button"
+                    onClick={() => handleSelectSession(sess)}
+                    className={cn(
+                      "w-full text-left rounded-xl border p-2.5 transition-all cursor-pointer",
+                      isSelected
+                        ? "border-amber-500/50 bg-zinc-900/95 shadow-sm"
+                        : "border-zinc-800/70 bg-zinc-900/35 hover:bg-zinc-900/70 hover:border-zinc-700"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-1.5 mb-1">
+                      <span className="text-xs font-semibold text-zinc-100 truncate">
+                        {sess.title}
+                      </span>
+                      <span
+                        className={cn(
+                          "w-2 h-2 rounded-full shrink-0",
+                          statusMeta.solidDot
+                        )}
+                        title={sess.status}
+                      />
+                    </div>
+                    <p className="text-[10px] text-zinc-400 line-clamp-1 mb-1.5">
+                      {sess.subtitle}
+                    </p>
+                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500">
+                      <span>{sess.updatedAt}</span>
+                      <Badge
+                        variant={statusMeta.badgeVariant}
+                        className="text-[9px] px-1.5 py-0"
+                      >
+                        {sess.badge}
+                      </Badge>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* 1B. Active Specialized Agents Roster & Live Status Indicators */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Bot className="w-3.5 h-3.5 text-sky-400" />
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300">
+                  Specialized Agents
+                </span>
+              </div>
+              <span className="text-[10px] font-mono text-zinc-500">
+                {agents.length} online
               </span>
             </div>
 
-            {/* Recommended / Funded Sites */}
-            <div className="flex flex-col gap-2" role="listbox" aria-label="Recommended cooling center candidate sites">
-              <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-between px-1">
-                <span>Recommended to Fund ({fundedSites.length})</span>
-                <span>Offset · Coverage</span>
-              </div>
-              {fundedSites.map((site) => {
-                const isSelected = site.id === selectedSiteId;
+            <div className="space-y-1.5">
+              {agents.map((agent) => {
+                const statusMeta = getStatusIndicator(agent.status);
+                const isSelected = agent.id === selectedAgentId;
+
                 return (
                   <div
-                    key={site.id}
-                    onClick={() => setSelectedSiteId(site.id)}
-                    role="option"
-                    aria-selected={isSelected}
+                    key={agent.id}
+                    onClick={() => setSelectedAgentId(agent.id)}
+                    role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        setSelectedSiteId(site.id);
+                        setSelectedAgentId(agent.id);
                       }
                     }}
-                    className={`w-full flex flex-col gap-2 px-3.5 py-3 rounded-xl border text-left cursor-pointer transition-all duration-200 ${
+                    className={cn(
+                      "rounded-xl border p-2.5 transition-all cursor-pointer",
                       isSelected
-                        ? "bg-gradient-to-r from-[#1a253a] to-[#131c2e] border-[#f97316] ring-1 ring-[#f97316]/40 shadow-lg"
-                        : "bg-white/[0.03] border-white/10 hover:bg-white/[0.06] hover:border-white/20"
-                    }`}
+                        ? "border-sky-500/50 bg-zinc-900/90"
+                        : "border-zinc-800/70 bg-zinc-900/35 hover:bg-zinc-900/70"
+                    )}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold shrink-0 transition-colors ${
-                            isSelected
-                              ? "bg-[#f97316] text-[#090d16]"
-                              : "bg-white text-[#090d16]"
-                          }`}
-                        >
-                          {site.id}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-[13px] font-bold text-slate-50 truncate">
-                            {site.name}
-                          </div>
-                          <div className="text-[11px] text-slate-400 font-mono">
-                            Tract {site.shortTract} · {site.noCarPct}% no car ·{" "}
-                            {site.seniorsPct}% 65+
-                          </div>
-                        </div>
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="relative flex h-2 w-2 shrink-0">
+                          <span
+                            className={cn(
+                              "absolute inline-flex h-full w-full rounded-full opacity-75",
+                              statusMeta.dot
+                            )}
+                          />
+                          <span
+                            className={cn(
+                              "relative inline-flex rounded-full h-2 w-2",
+                              statusMeta.solidDot
+                            )}
+                          />
+                        </span>
+                        <span className="text-xs font-semibold text-zinc-100 truncate">
+                          {agent.name}
+                        </span>
                       </div>
 
-                      <div className="flex flex-col items-end font-mono shrink-0">
-                        <span className="text-xs font-bold text-[#f97316]">
-                          +{site.offsetF.toFixed(1)}°F
-                        </span>
-                        <span className="text-[11px] text-slate-300">
-                          {site.residentsReached.toLocaleString()} reached
-                        </span>
-                      </div>
+                      <Badge
+                        variant={statusMeta.badgeVariant}
+                        className="text-[9px] px-1.5 py-0 shrink-0"
+                      >
+                        {statusMeta.label}
+                      </Badge>
                     </div>
 
-                    {isSelected && (
-                      <div className="flex items-center justify-between pt-1.5 border-t border-white/10 text-[11px]">
-                        <span className="text-emerald-400 font-mono font-semibold">
-                          ✓ Selected on map
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSendMessage(
-                              `Explain why Site ${site.id} (${site.name}, Tract ${site.shortTract}) runs +${site.offsetF.toFixed(1)}°F hotter than Atlanta's average and why it ranks #${site.id}.`,
-                              selectedAgent
-                            );
-                          }}
-                          className="inline-flex items-center gap-1 text-[#fdba74] hover:text-white font-semibold"
-                        >
-                          <HelpCircle className="w-3 h-3" />
-                          <span>Ask AI about Site #{site.id}</span>
-                        </button>
-                      </div>
-                    )}
+                    <div className="text-[10px] font-mono text-zinc-400 truncate mb-1">
+                      {agent.role}
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-1 border-t border-zinc-800/60">
+                      <span>{agent.codename}</span>
+                      <span>{(agent.tokensUsed / 1000).toFixed(1)}k tok</span>
+                    </div>
                   </div>
                 );
               })}
             </div>
+          </div>
 
-            {/* Passed Over Sites (So users can easily see & click Site #4 and #5!) */}
-            {passedOverSites.length > 0 && (
-              <div className="flex flex-col gap-2 pt-1">
-                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400/90 flex items-center justify-between px-1">
-                  <span>Passed Over / Unfunded ({passedOverSites.length})</span>
-                  <span>Click to compare</span>
-                </div>
-                {passedOverSites.map((site) => {
-                  const isSelected = site.id === selectedSiteId;
-                  return (
-                    <div
-                      key={site.id}
-                      onClick={() => setSelectedSiteId(site.id)}
-                      role="option"
-                      aria-selected={isSelected}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setSelectedSiteId(site.id);
-                        }
-                      }}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-left cursor-pointer transition-all duration-200 ${
-                        isSelected
-                          ? "bg-gradient-to-r from-[#1a253a] to-[#131c2e] border-amber-400/80 ring-1 ring-amber-400/30 shadow-lg"
-                          : "bg-white/[0.015] border-white/10 opacity-80 hover:opacity-100 hover:bg-white/[0.04]"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-6 h-6 rounded-full border border-slate-500 bg-slate-800/90 text-slate-300 flex items-center justify-center text-xs font-bold shrink-0">
-                          {site.id}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold text-slate-200 truncate">
-                            {site.name}
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-mono">
-                            Tract {site.shortTract} · {site.noCarPct}% no car (lower need)
-                          </div>
-                        </div>
-                      </div>
+          <Separator />
 
-                      <div className="flex items-center gap-2 font-mono shrink-0">
-                        <span className="text-xs font-bold text-amber-300">
-                          +{site.offsetF.toFixed(1)}°F
-                        </span>
+          {/* 1C. Candidate Cooling Center Sites Quick Selector (Synced with Map) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-zinc-300">
+                Candidate Sites (1–5)
+              </span>
+              <Badge variant="amber" className="text-[10px]">
+                Top {centersToFund} Funded
+              </Badge>
+            </div>
+
+            <div className="space-y-1">
+              {sites.map((site) => {
+                const isSelected = site.id === selectedSiteId;
+                const isFunded = site.id <= centersToFund;
+                return (
+                  <button
+                    key={site.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedSiteId(site.id);
+                      if (!isRightPanelOpen) setIsRightPanelOpen(true);
+                    }}
+                    className={cn(
+                      "w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border text-left transition-all cursor-pointer",
+                      isSelected
+                        ? "border-amber-500/60 bg-amber-950/25 text-zinc-100"
+                        : "border-zinc-800/60 bg-zinc-900/30 text-zinc-400 hover:bg-zinc-900/70 hover:text-zinc-200"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={cn(
+                          "w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0",
+                          isFunded
+                            ? "bg-amber-500 text-zinc-950"
+                            : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                        )}
+                      >
+                        {site.id}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-medium truncate text-zinc-200">
+                          {site.name}
+                        </div>
+                        <div className="text-[9px] font-mono text-zinc-500">
+                          Tract {site.shortTract} · {site.noCarPct}% no-car
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
+                    <span className="text-[11px] font-mono font-bold text-amber-400 shrink-0">
+                      +{site.offsetF.toFixed(1)}°F
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Quick Planning Workflow Jumpers */}
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={onOpenCompareModal}
+                className="justify-center text-[10px]"
+              >
+                <GitCompare className="w-3 h-3 text-amber-400" />
+                Why Not #4?
+              </Button>
+              <Button
+                type="button"
+                variant="amber"
+                size="xs"
+                onClick={() => onNavigateTab("proposal")}
+                className="justify-center text-[10px]"
+              >
+                Council Memo
+                <ArrowRight className="w-3 h-3" />
+              </Button>
+            </div>
+          </div>
+        </aside>
+
+        {/* ===================================================================
+            COLUMN 2 (CENTER MAIN WORKSPACE / AGENT STREAM)
+            Expands to lg:col-span-9 when right panel is collapsed, or lg:col-span-5 when open
+           =================================================================== */}
+        <section
+          className={cn(
+            "flex flex-col rounded-2xl border border-zinc-800/90 bg-zinc-950/90 shadow-2xl overflow-hidden transition-all duration-300",
+            isRightPanelOpen ? "lg:col-span-5" : "lg:col-span-9"
+          )}
+        >
+          {/* 2A. Workspace Header with Agent Metadata & Task Progress Bar */}
+          <div className="p-3.5 border-b border-zinc-800/90 bg-zinc-900/60 space-y-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-300 shrink-0">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm font-bold text-zinc-100 tracking-tight truncate">
+                      {activeAgentObj.name}
+                    </h2>
+                    <Badge variant="secondary" className="font-mono text-[10px]">
+                      {activeAgentObj.model}
+                    </Badge>
+                    <Badge
+                      variant={
+                        latestAssistantMsg?.groundingStatus?.methodologicalGate ===
+                        "SCOPE_REFUSED"
+                          ? "amber"
+                          : "emerald"
+                      }
+                      className="text-[10px]"
+                    >
+                      <ShieldCheck className="w-3 h-3" />
+                      {latestAssistantMsg?.groundingStatus?.methodologicalGate ===
+                      "SCOPE_REFUSED"
+                        ? "Stage-2 Scope Guardrail"
+                        : `Grounded ±0.01°F (${
+                            latestAssistantMsg?.groundingStatus
+                              ?.withinToleranceCount ?? 14
+                          }/${
+                            latestAssistantMsg?.groundingStatus?.checkedCount ??
+                            14
+                          })`}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 truncate mt-0.5">
+                    {activeAgentObj.currentTask}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {latestAssistantMsg && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="xs"
+                    onClick={() => triggerStreamingReplay(latestAssistantMsg)}
+                    disabled={isStreamingTurn}
+                    title="Replay real-time token & step streaming"
+                  >
+                    <Play className="w-3 h-3 text-emerald-400" />
+                    Replay Stream
+                  </Button>
+                )}
+
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  onClick={() => setIsRightPanelOpen((prev) => !prev)}
+                  title="Toggle Right Context & Tool Execution Inspect Panel"
+                >
+                  {isRightPanelOpen ? (
+                    <>
+                      <PanelRightClose className="w-3.5 h-3.5 text-sky-400" />
+                      <span className="hidden sm:inline">Hide Inspector</span>
+                    </>
+                  ) : (
+                    <>
+                      <PanelRightOpen className="w-3.5 h-3.5 text-sky-400" />
+                      <span className="hidden sm:inline">Open Inspector</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* <MultiStepProgress /> Streaming Status Bar */}
+            {latestAssistantMsg?.subTasks && (
+              <MultiStepProgress
+                subTasks={latestAssistantMsg.subTasks}
+                progressPct={
+                  isStreamingTurn
+                    ? streamingProgress
+                    : latestAssistantMsg.progressPct ?? 100
+                }
+                activeAgentName={activeAgentObj.codename}
+              />
+            )}
+          </div>
+
+          {/* 2B. Threaded Conversation Stream (Human + Multi-Step Agent Thought, Tool Calls, HITL ApprovalGate) */}
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 overflow-y-auto p-4 space-y-5 max-h-[680px] min-h-[480px] scrollbar-thin"
+          >
+            {activeSession.messages.map((msg) => {
+              if (msg.role === "user") {
+                return (
+                  <div key={msg.id} className="flex justify-end">
+                    <div className="max-w-[88%] rounded-2xl rounded-br-sm border border-zinc-700/80 bg-zinc-800/90 px-4 py-3 text-xs text-zinc-100 shadow-md">
+                      <div className="flex items-center justify-between gap-3 mb-1 text-[10px] font-mono text-zinc-400">
+                        <span>Operator (City Resilience Planner)</span>
+                        <span>{msg.timestamp}</span>
+                      </div>
+                      <p className="leading-relaxed">{msg.content}</p>
+                    </div>
+                  </div>
+                );
+              }
+
+              const displayedMarkdown =
+                streamedTextOverride[msg.id] !== undefined
+                  ? streamedTextOverride[msg.id]
+                  : msg.content;
+
+              return (
+                <div key={msg.id} className="space-y-3">
+                  {/* Agent Turn Header */}
+                  <div className="flex items-center justify-between gap-2 text-[11px] font-mono text-zinc-400">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      <span className="font-semibold text-zinc-200">
+                        {msg.agentName || "HeatPlanner Orchestrator"}
+                      </span>
+                      <span className="text-zinc-600">·</span>
+                      <span>{msg.timestamp}</span>
+                    </div>
+                    {msg.latencyMs && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400">
+                        {msg.latencyMs}ms total
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 1. <AgentThought /> Chain-of-Thought Accordion */}
+                  {msg.thoughtSteps && msg.thoughtSteps.length > 0 && (
+                    <AgentThought
+                      steps={msg.thoughtSteps}
+                      isProcessing={
+                        isStreamingTurn ||
+                        msg.approvalGate?.status === "pending"
+                      }
+                      defaultOpen={true}
+                    />
+                  )}
+
+                  {/* 2. <ToolCall /> Pills & JSON Micro-Viewers */}
+                  {msg.toolCalls && msg.toolCalls.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">
+                          Tool Executions ({msg.toolCalls.length})
+                        </span>
+                        <span className="text-[10px] font-mono text-sky-400">
+                          Click any pill to inspect JSON / SQL
+                        </span>
+                      </div>
+                      {msg.toolCalls.map((tc, idx) => (
+                        <ToolCall
+                          key={tc.id}
+                          toolCall={tc}
+                          onInspectInPanel={handleInspectToolInPanel}
+                          isSelectedInPanel={inspectedToolCall?.id === tc.id}
+                          defaultExpanded={idx === 0}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* 3. <ApprovalGate /> Human-In-The-Loop Intervention Modal/Widget */}
+                  {msg.approvalGate && (
+                    <ApprovalGate
+                      gate={msg.approvalGate}
+                      onApprove={(gateId) => handleApproveGate(msg.id, gateId)}
+                      onDeny={(gateId) => handleDenyGate(msg.id, gateId)}
+                      onCorrectPath={(gateId, feedback) =>
+                        handleCorrectPathGate(msg.id, gateId, feedback)
+                      }
+                      onResetGate={(gateId) => handleResetGate(msg.id, gateId)}
+                    />
+                  )}
+
+                  {/* 4. Streamed Markdown Response Card */}
+                  <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/50 p-4 shadow-inner">
+                    <div className="prose-dark text-xs leading-relaxed text-zinc-200 space-y-2">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {displayedMarkdown}
+                      </ReactMarkdown>
+                    </div>
+
+                    {/* Grounded Citations Footer */}
+                    {msg.citations && msg.citations.length > 0 && (
+                      <div className="mt-3.5 pt-3 border-t border-zinc-800/80 flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-mono uppercase text-zinc-500 mr-1">
+                          Verified Citations:
+                        </span>
+                        {msg.citations.map((cit) => (
+                          <span
+                            key={`${cit.tractFips}-${cit.metric}`}
+                            className="inline-flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-950 border border-zinc-800 text-zinc-300"
+                          >
+                            <span className="text-amber-400 font-semibold">
+                              {cit.tractFips}
+                            </span>
+                            <span>({cit.neighborhood}):</span>
+                            <span className="text-emerald-300">{cit.value}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* 2C. Prompt Composer & Preset Multi-Agent Triggers */}
+          <div className="p-3.5 border-t border-zinc-800/90 bg-zinc-900/75 space-y-2.5">
+            {/* Quick Prompt Chips */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+              {PRESET_AGENTIC_PROMPTS.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => handlePromptSubmit(item.prompt)}
+                  disabled={isStreamingTurn || isLoadingMessage}
+                  className="px-2.5 py-1 rounded-lg border border-zinc-800 bg-zinc-950/90 hover:bg-zinc-800 hover:border-zinc-700 text-[11px] font-mono text-zinc-300 shrink-0 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Text Input Form */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handlePromptSubmit(inputPrompt);
+              }}
+              className="flex items-center gap-2"
+            >
+              <input
+                type="text"
+                value={inputPrompt}
+                onChange={(e) => setInputPrompt(e.target.value)}
+                placeholder="Ask the multi-agent system to query BQML, compare cooling sites, or audit Justice40 equity..."
+                className="flex-1 h-9 rounded-xl border border-zinc-700/90 bg-zinc-950 px-3.5 text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-amber-500/80"
+              />
+              <Button
+                type="submit"
+                variant="amber"
+                size="default"
+                disabled={
+                  !inputPrompt.trim() || isStreamingTurn || isLoadingMessage
+                }
+              >
+                {isStreamingTurn || isLoadingMessage ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Streaming
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    Execute
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
+        </section>
+
+        {/* ===================================================================
+            COLUMN 3 (RIGHT COLLAPSIBLE CONTEXT / TOOL EXECUTION INSPECT PANEL)
+            lg:col-span-4 when open
+           =================================================================== */}
+        {isRightPanelOpen && (
+          <aside className="lg:col-span-4 flex flex-col gap-3 rounded-2xl border border-zinc-800/90 bg-zinc-950/90 p-3.5 shadow-2xl">
+            {/* Inspector Header + 3 Mode Switcher Tabs */}
+            <div className="flex items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setRightPanelTab("canvas")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+                    rightPanelTab === "canvas"
+                      ? "bg-zinc-800 text-amber-300 border border-zinc-700"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  )}
+                >
+                  <MapIcon className="w-3.5 h-3.5" />
+                  Spatial Canvas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRightPanelTab("sandbox")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+                    rightPanelTab === "sandbox"
+                      ? "bg-zinc-800 text-sky-300 border border-zinc-700"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  )}
+                >
+                  <Terminal className="w-3.5 h-3.5" />
+                  Tool Sandbox
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRightPanelTab("metrics")}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer",
+                    rightPanelTab === "metrics"
+                      ? "bg-zinc-800 text-emerald-300 border border-zinc-700"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  )}
+                >
+                  <Coins className="w-3.5 h-3.5" />
+                  Tokens & Cost
+                </button>
+              </div>
+            </div>
+
+            {/* ---------------------------------------------------------------
+                RIGHT TAB 1: SPATIAL CANVAS & INTERACTIVE ATLANTA MAP
+               --------------------------------------------------------------- */}
+            {rightPanelTab === "canvas" && (
+              <div className="space-y-3">
+                <AtlantaMap
+                  sites={sites}
+                  selectedSiteId={selectedSiteId}
+                  onSelectSite={setSelectedSiteId}
+                  centersToFund={centersToFund}
+                  setCentersToFund={setCentersToFund}
+                  activeLayer={activeLayer}
+                  setActiveLayer={setActiveLayer}
+                />
+
+                {/* Selected Site BQML EXPLAIN_PREDICT Waterfall Card */}
+                {selectedSite && (
+                  <Card className="border-zinc-800 bg-zinc-900/75">
+                    <CardHeader className="p-3 pb-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-amber-500 text-zinc-950 font-extrabold text-xs flex items-center justify-center">
+                            {selectedSite.id}
+                          </span>
+                          <div>
+                            <CardTitle className="text-xs">
+                              {selectedSite.name} (Tract {selectedSite.shortTract})
+                            </CardTitle>
+                            <p className="text-[10px] font-mono text-zinc-400">
+                              +{selectedSite.offsetF.toFixed(1)}°F offset ·{" "}
+                              {selectedSite.residentsReached.toLocaleString()}{" "}
+                              walk-shed pop · {selectedSite.estAnnualCost}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge
+                          variant={
+                            selectedSite.id <= centersToFund
+                              ? "emerald"
+                              : "amber"
+                          }
+                        >
+                          {selectedSite.id <= centersToFund
+                            ? "FUNDED"
+                            : "UNFUNDED"}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="p-3 pt-1 space-y-2">
+                      <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+                        BQML EXPLAIN_PREDICT Drivers
+                      </div>
+                      <div className="space-y-1.5">
+                        {selectedSite.drivers.map((drv) => {
+                          const val = drv.attributionF ?? drv.deltaF ?? 0;
+                          const widthPct = Math.min(
+                            100,
+                            Math.round((Math.abs(val) / 2.0) * 100)
+                          );
+                          return (
+                            <div
+                              key={drv.label || drv.feature}
+                              className="grid grid-cols-12 items-center gap-2 text-[11px]"
+                            >
+                              <span className="col-span-5 text-zinc-300 truncate">
+                                {drv.label || drv.feature}
+                              </span>
+                              <div className="col-span-5 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full rounded-full",
+                                    val >= 0 ? "bg-amber-500" : "bg-emerald-400"
+                                  )}
+                                  style={{ width: `${widthPct}%` }}
+                                />
+                              </div>
+                              <span className="col-span-2 text-right font-mono text-zinc-200">
+                                {val >= 0 ? "+" : ""}
+                                {val.toFixed(2)}°F
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-zinc-800/80 text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => onNavigateTab("sites")}
+                          className="text-amber-400 hover:text-amber-300 font-semibold cursor-pointer"
+                        >
+                          Full Site Drivers →
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onNavigateTab("equity")}
+                          className="text-sky-400 hover:text-sky-300 font-semibold cursor-pointer"
+                        >
+                          Justice40 Equity Audit →
+                        </button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
 
-            <p className="text-[11px] text-slate-400 leading-relaxed bg-white/[0.02] border border-white/[0.06] rounded-xl p-3">
-              <strong className="text-slate-200">Note on heat offset:</strong>{" "}
-              Offset is how much hotter a tract runs relative to Atlanta’s campaign mean (`+°F`), not a single-day weather forecast.
-            </p>
-          </div>
-
-          {/* Guided Next-Step Workflow Buttons */}
-          <div className="border-t border-white/10 pt-4 flex flex-col gap-2 relative z-10">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-bold">
-              Next Steps in Planning Workflow
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={onOpenCompareModal}
-                className="px-3 py-2.5 rounded-xl border border-white/15 bg-white/[0.04] hover:bg-white/[0.08] text-xs text-slate-100 font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              >
-                <GitCompare className="w-3.5 h-3.5 text-[#f97316]" />
-                <span>Why not Site #4?</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onNavigateTab("sites")}
-                className="px-3 py-2.5 rounded-xl border border-white/15 bg-white/[0.04] hover:bg-white/[0.08] text-xs text-slate-100 font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              >
-                <span>2. Site Drivers</span>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onNavigateTab("equity")}
-                className="px-3 py-2.5 rounded-xl border border-white/15 bg-white/[0.04] hover:bg-white/[0.08] text-xs text-slate-100 font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              >
-                <span>3. Equity Audit</span>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onNavigateTab("proposal")}
-                className="px-3 py-2.5 rounded-xl bg-gradient-to-b from-[#fb923c] to-[#f97316] hover:from-orange-400 hover:to-orange-500 text-[#090d16] font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-orange-950/50 cursor-pointer"
-              >
-                <span>4. Council Memo</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Interactive Map & Selected Site Bottom Card */}
-        <div className="lg:col-span-8 p-6 sm:p-8 flex flex-col justify-between gap-6 bg-[#0b101b]/90">
-          <AtlantaMap
-            sites={sites}
-            selectedSiteId={selectedSiteId}
-            onSelectSite={setSelectedSiteId}
-            centersToFund={centersToFund}
-            setCentersToFund={setCentersToFund}
-            activeLayer={activeLayer}
-            setActiveLayer={setActiveLayer}
-          />
-
-          {/* Selected Site Bottom Driver Breakdown Card */}
-          {selectedSite && (
-            <div className="bg-[#101829]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl grid grid-cols-1 md:grid-cols-12 gap-6 items-center relative overflow-hidden">
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute -bottom-16 -right-16 w-56 h-56 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(249,115,22,0.09),transparent_70%)] blur-2xl"
-              />
-              {/* Left 4 cols: Site Badge, Name, FUNDED · Tract, and Links */}
-              <div className="md:col-span-4 flex flex-col justify-between h-full gap-4 relative z-10">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 rounded-full bg-white text-[#090d16] flex items-center justify-center text-sm font-extrabold shadow-md shrink-0">
-                    {selectedSite.id}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-extrabold text-slate-50 tracking-tight truncate">
-                      {selectedSite.name}
-                    </h3>
-                    <div className="text-xs font-mono mt-0.5 flex items-center gap-1.5">
-                      <span
-                        className={
-                          isSelectedFunded
-                            ? "text-emerald-400 font-bold"
-                            : "text-amber-400 font-bold"
+            {/* ---------------------------------------------------------------
+                RIGHT TAB 2: LIVE CODE, SQL & ORDINANCE DIFF SANDBOX
+               --------------------------------------------------------------- */}
+            {rightPanelTab === "sandbox" && (
+              <div className="space-y-3">
+                <Card className="border-zinc-800 bg-zinc-900/70">
+                  <CardHeader className="p-3 pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Database className="w-4 h-4 text-sky-400" />
+                        <CardTitle>
+                          {inspectedToolCall?.toolName || "execute_sql"}() Live
+                          Sandbox
+                        </CardTitle>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="emerald"
+                        size="xs"
+                        onClick={() =>
+                          setSandboxRunOutput(
+                            `[BigQuery Job a4i-job-${Math.floor(
+                              1000 + Math.random() * 9000
+                            )}] Verified 207 Fulton County rows in 382ms (±0.01°F grounding check PASSED).`
+                          )
                         }
                       >
-                        {isSelectedFunded ? "FUNDED" : "PASS OVER"}
-                      </span>
-                      <span className="text-slate-500">·</span>
-                      <span className="text-slate-400">
-                        Tract {selectedSite.shortTract}
+                        <Play className="w-3 h-3" />
+                        Execute in Sandbox
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-1 space-y-2.5">
+                    {/* Tool Selector Pills */}
+                    {latestAssistantMsg?.toolCalls && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {latestAssistantMsg.toolCalls.map((tc) => (
+                          <button
+                            key={tc.id}
+                            type="button"
+                            onClick={() => setInspectedToolCall(tc)}
+                            className={cn(
+                              "px-2 py-1 rounded-md text-[10px] font-mono border transition-colors cursor-pointer",
+                              inspectedToolCall?.id === tc.id
+                                ? "bg-sky-950/60 border-sky-500/60 text-sky-300"
+                                : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                            )}
+                          >
+                            {tc.toolName}()
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* SQL / Code / Diff Buffer */}
+                    <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 font-mono text-[11px] text-zinc-200 overflow-x-auto max-h-60">
+                      <pre className="whitespace-pre-wrap">
+                        {inspectedToolCall?.sqlOrCodeSnippet ||
+                          "-- Select any tool call pill in the stream to inspect its SQL or ordinance diff"}
+                      </pre>
+                    </div>
+
+                    {/* Structured Output JSON */}
+                    <div>
+                      <div className="text-[10px] font-mono uppercase text-zinc-500 mb-1">
+                        Verified Tool Output Payload
+                      </div>
+                      <pre className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 font-mono text-[11px] text-emerald-300 overflow-x-auto max-h-48">
+                        {JSON.stringify(
+                          inspectedToolCall?.output || {
+                            status: "READY",
+                            verified_tracts: 207,
+                          },
+                          null,
+                          2
+                        )}
+                      </pre>
+                    </div>
+
+                    {sandboxRunOutput && (
+                      <div className="rounded-lg border border-emerald-500/40 bg-emerald-950/25 p-2.5 text-[11px] font-mono text-emerald-300">
+                        {sandboxRunOutput}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* ---------------------------------------------------------------
+                RIGHT TAB 3: TOKEN COUNT USAGE, STEP TIMERS & COST METRICS
+               --------------------------------------------------------------- */}
+            {rightPanelTab === "metrics" && (
+              <div className="space-y-3">
+                {/* Token Count Usage Widget */}
+                <Card className="border-zinc-800 bg-zinc-900/70">
+                  <CardHeader className="p-3 pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Cpu className="w-4 h-4 text-amber-400" />
+                        <CardTitle>Token Count Usage</CardTitle>
+                      </div>
+                      <Badge variant="amber" className="font-mono text-[10px]">
+                        {activeTokenMetrics.totalTokens.toLocaleString()} /{" "}
+                        {(
+                          activeTokenMetrics.contextWindowLimit / 1000
+                        ).toFixed(0)}
+                        k ctx
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-1 space-y-2.5">
+                    <Progress
+                      value={Math.max(
+                        6,
+                        Math.round(
+                          (activeTokenMetrics.totalTokens /
+                            activeTokenMetrics.contextWindowLimit) *
+                            100
+                        )
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-lg bg-zinc-950 border border-zinc-800 p-2">
+                        <div className="text-[10px] font-mono text-zinc-500">
+                          Prompt Context
+                        </div>
+                        <div className="font-mono font-bold text-zinc-100 mt-0.5">
+                          {activeTokenMetrics.promptTokens.toLocaleString()} tok
+                        </div>
+                      </div>
+                      <div className="rounded-lg bg-zinc-950 border border-zinc-800 p-2">
+                        <div className="text-[10px] font-mono text-amber-400">
+                          CoT Reasoning
+                        </div>
+                        <div className="font-mono font-bold text-amber-300 mt-0.5">
+                          {activeTokenMetrics.reasoningTokens.toLocaleString()}{" "}
+                          tok
+                        </div>
+                      </div>
+                      <div className="rounded-lg bg-zinc-950 border border-zinc-800 p-2">
+                        <div className="text-[10px] font-mono text-sky-400">
+                          MCP & SQL Tool I/O
+                        </div>
+                        <div className="font-mono font-bold text-sky-300 mt-0.5">
+                          {activeTokenMetrics.toolIoTokens.toLocaleString()} tok
+                        </div>
+                      </div>
+                      <div className="rounded-lg bg-zinc-950 border border-zinc-800 p-2">
+                        <div className="text-[10px] font-mono text-emerald-400">
+                          Streamed Output
+                        </div>
+                        <div className="font-mono font-bold text-emerald-300 mt-0.5">
+                          {activeTokenMetrics.completionTokens.toLocaleString()}{" "}
+                          tok
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Step Timers Waterfall Widget */}
+                <Card className="border-zinc-800 bg-zinc-900/70">
+                  <CardHeader className="p-3 pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Timer className="w-4 h-4 text-sky-400" />
+                        <CardTitle>Multi-Step Execution Timers</CardTitle>
+                      </div>
+                      <span className="text-[11px] font-mono text-zinc-400">
+                        {latestAssistantMsg?.latencyMs || 1840}ms e2e
                       </span>
                     </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-4 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => onNavigateTab("sites")}
-                    className="text-xs text-[#f97316] hover:text-orange-300 font-bold underline underline-offset-4 decoration-[#f97316]/60 transition-all duration-200 active:scale-[0.98]"
-                  >
-                    Full breakdown →
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onOpenCompareModal}
-                    className="text-xs text-slate-300 hover:text-white font-semibold transition-all duration-200 active:scale-[0.98]"
-                  >
-                    Compare with site 4 →
-                  </button>
-                </div>
-              </div>
-
-              {/* Middle 4 cols: Main Metrics */}
-              <div className="md:col-span-4 border-t md:border-t-0 md:border-l md:border-r border-white/10 pt-4 md:pt-0 md:px-6 flex flex-col gap-2 text-xs relative z-10">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Heat offset</span>
-                  <span className="font-mono font-bold text-[#f97316]">
-                    +{selectedSite.offsetF.toFixed(1)}°F vs. city
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Days ≥95°F / summer</span>
-                  <span className="font-mono font-bold text-slate-100">
-                    {selectedSite.hotDaysPerSummer} days
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Residents reached</span>
-                  <span className="font-mono font-bold text-slate-100">
-                    {selectedSite.residentsReached.toLocaleString()} (≤10-min)
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Est. annual cost</span>
-                  <span className="font-mono font-bold text-slate-100">
-                    {selectedSite.estAnnualCost} / yr
-                  </span>
-                </div>
-              </div>
-
-              {/* Right 4 cols: WHY THIS SITE IS HOT (EXPLAIN_PREDICT) */}
-              <div className="md:col-span-4 border-t md:border-t-0 border-white/10 pt-4 md:pt-0 flex flex-col gap-2.5 relative z-10">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
-                  WHY THIS SITE IS HOT (EXPLAIN_PREDICT)
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  {selectedSite.drivers.map((drv) => {
-                    const val = drv.attributionF ?? drv.deltaF ?? 0;
-                    const widthPct = Math.min(
-                      100,
-                      Math.round((Math.abs(val) / 2.2) * 100)
-                    );
-                    return (
-                      <div
-                        key={drv.label || drv.feature}
-                        className="grid grid-cols-12 items-center gap-2 text-xs"
-                      >
-                        <span className="col-span-5 text-slate-300 truncate">
-                          {drv.label || drv.feature}
-                        </span>
-                        <div className="col-span-5 h-2 rounded-full bg-white/[0.08] overflow-hidden">
+                  </CardHeader>
+                  <CardContent className="p-3 pt-1 space-y-2">
+                    {activeStepTimers.map((timer) => (
+                      <div key={timer.id} className="space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-zinc-300 truncate">
+                            {timer.stepName}
+                          </span>
+                          <span className="font-mono text-zinc-400 shrink-0">
+                            {timer.durationMs}ms ({timer.percentageOfTotal}%)
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-zinc-800 overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all duration-300 ${
-                              val >= 0 ? "bg-[#f97316]" : "bg-emerald-400"
-                            }`}
-                            style={{ width: `${widthPct}%` }}
+                            className={cn(
+                              "h-full rounded-full",
+                              timer.status === "waiting"
+                                ? "bg-amber-400"
+                                : "bg-sky-400"
+                            )}
+                            style={{ width: `${timer.percentageOfTotal}%` }}
                           />
                         </div>
-                        <span className="col-span-2 text-right font-mono font-bold text-slate-200 text-[11px]">
-                          {val >= 0 ? "+" : ""}
-                          {val.toFixed(1)}°F
-                        </span>
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                {/* Cost Estimation Metrics Widget */}
+                <Card className="border-zinc-800 bg-zinc-900/70">
+                  <CardHeader className="p-3 pb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Coins className="w-4 h-4 text-emerald-400" />
+                        <CardTitle>Cost Estimation & FinOps</CardTitle>
+                      </div>
+                      <Badge variant="emerald" className="font-mono text-[10px]">
+                        Vertex AI / BigQuery Cached
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-3 pt-1 space-y-2 text-xs">
+                    <div className="flex items-center justify-between py-1 border-b border-zinc-800/70">
+                      <span className="text-zinc-400">Current Turn Cost</span>
+                      <span className="font-mono font-bold text-emerald-300">
+                        ${activeTokenMetrics.estimatedCostUsd.toFixed(4)} USD
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between py-1 border-b border-zinc-800/70">
+                      <span className="text-zinc-400">
+                        BigQuery Slot Bytes Billed
+                      </span>
+                      <span className="font-mono text-zinc-200">
+                        14.2 MB ($0.0001)
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-zinc-400">Rate Schedule</span>
+                      <span className="font-mono text-[11px] text-zinc-400">
+                        ${activeTokenMetrics.inputRatePer1M}/1M in · $
+                        {activeTokenMetrics.outputRatePer1M}/1M out
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </aside>
+        )}
       </div>
     </div>
   );

@@ -21,6 +21,7 @@ ALLOWED_MCP_TOOLS: frozenset[str] = frozenset(
         "hottest_measured_cells",
         "hottest_predicted_cells",
         "city_baseline",
+        "tract_layer",
     }
 )
 

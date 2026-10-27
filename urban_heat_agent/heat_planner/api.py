@@ -2,14 +2,17 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 import logging
+import time
 from typing import Any
 import uuid
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from .config import Settings
+from .mcp_client import invoke_mcp_tool
 from .orchestrator import run_plan_turn
 from .schemas import AgentApiResponse, SiteAssessment
 
@@ -20,13 +23,20 @@ FEATURE_LABELS: dict[str, str] = {
     "pop_density_km2": "Street density",
     "housing_density_km2": "Housing density",
     "pop_within_1500m": "People within 1.5 km",
-    "median_year_built": "Older building stock",
+    "housing_within_1500m": "Homes within 1.5 km",
+    "median_year_built": "Building age",
+    "mean_year_built_1500m": "Building age within 1.5 km",
     "km_from_center": "Distance from downtown",
+    "meters_to_tract_point": "Distance to tract center",
     "water_share": "Water nearby",
     "dist_to_water_m": "Distance to water",
     "lat": "North–south position",
     "lon": "East–west position",
 }
+
+TRACT_LAYER_TTL_S = 3600
+TRACT_SIMPLIFY_M = 15.0
+_tract_cache: tuple[float, dict[str, Any]] | None = None
 
 app = FastAPI(
     title="Atlanta Urban Heat Planning Assistant API",
@@ -37,8 +47,14 @@ app = FastAPI(
     ),
 )
 
+@app.get("/healthz")
+@app.get("/")
+def healthz() -> dict[str, str]:
+    return {"status": "ok"}
+
 # In-memory session store keyed by session_id for multi-turn state (`last_ranked_candidates`, etc.)
 _SESSIONS: dict[str, dict[str, Any]] = {}
+
 
 
 class PlanRequest(BaseModel):
@@ -186,10 +202,20 @@ def _to_api_dict(resp: AgentApiResponse) -> dict[str, Any]:
 
         ea_dict = None
         if ea:
-            allowed_measures = {"median_income", "poverty_rate", "no_vehicle_rate", "share_65_plus"}
+            # Metric prefix mapping to AuditMeasureRow in ui_service/contracts/agent_api.py
+            metric_to_measure = {
+                "1_poverty_rate": "poverty_rate",
+                "2_no_vehicle_rate": "no_vehicle_rate",
+                "3_share_65_plus": "share_65_plus",
+                "4_median_income_usd": "median_income",
+                "poverty_rate": "poverty_rate",
+                "no_vehicle_rate": "no_vehicle_rate",
+                "share_65_plus": "share_65_plus",
+                "median_income": "median_income",
+            }
             measures = [
                 {
-                    "measure": m.metric,
+                    "measure": metric_to_measure[m.metric],
                     "sites_value": m.recommended_sites,
                     "city_value": m.city_overall,
                     "ratio": m.ratio_rec_to_city or (
@@ -197,13 +223,29 @@ def _to_api_dict(resp: AgentApiResponse) -> dict[str, Any]:
                     ),
                 }
                 for m in ea.metrics
-                if m.metric in allowed_measures
+                if m.metric in metric_to_measure
             ]
+
+            # Post-hoc racial composition check only; never a model or ranking input
+            racial_mapping = {
+                "7_posthoc_black_resident_share": "Black",
+                "8_posthoc_white_resident_share": "White",
+            }
+            racial_comp = [
+                {
+                    "group": racial_mapping[m.metric],
+                    "sites_share": m.recommended_sites,
+                    "city_share": m.city_overall,
+                }
+                for m in ea.metrics
+                if m.metric in racial_mapping
+            ]
+
             ea_dict = {
                 **ea.model_dump(mode="json"),
                 "measures": measures,
                 "verdict": ea.summary,
-                "racial_composition": [],
+                "racial_composition": racial_comp,
                 "provenance_ids": prov_ids,
             }
 
@@ -242,26 +284,6 @@ def _to_api_dict(resp: AgentApiResponse) -> dict[str, Any]:
     return out
 
 
-class AdkPart(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    text: str | None = None
-
-
-class AdkMessage(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    role: str = "user"
-    parts: list[AdkPart] = Field(default_factory=list)
-
-
-class AdkRunRequest(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    appName: str = "urban_heat_agent"
-    userId: str = "urban_planner"
-    sessionId: str = "default"
-    newMessage: AdkMessage | None = None
-    message: str | None = None
-
-
 @app.get("/healthz")
 def healthz() -> dict[str, Any]:
     return {
@@ -277,17 +299,6 @@ def healthz() -> dict[str, Any]:
     }
 
 
-@app.get("/list-apps")
-def list_apps() -> list[str]:
-    return ["urban_heat_agent", "heat_planner", "agent"]
-
-
-@app.post("/apps/{app_name}/users/{user_id}/sessions/{session_id}")
-def create_session(app_name: str, user_id: str, session_id: str) -> dict[str, Any]:
-    _SESSIONS.setdefault(session_id, {})
-    return {"id": session_id, "appName": app_name, "userId": user_id, "state": {}}
-
-
 @app.post("/api/v1/plan")
 def plan_endpoint(req: PlanRequest) -> dict[str, Any]:
     state = _SESSIONS.setdefault(req.session_id, {})
@@ -295,56 +306,43 @@ def plan_endpoint(req: PlanRequest) -> dict[str, Any]:
     return _to_api_dict(resp)
 
 
-@app.post("/run")
-def adk_run_endpoint(req: AdkRunRequest) -> list[dict[str, Any]]:
-    msg_text = req.message or ""
-    if not msg_text and req.newMessage and req.newMessage.parts:
-        msg_text = " ".join(p.text for p in req.newMessage.parts if p.text).strip()
-    if not msg_text:
-        msg_text = "Recommend 3 cooling centers in Atlanta."
-
-    state = _SESSIONS.setdefault(req.sessionId, {})
-    resp = run_plan_turn(msg_text, session_state=state)
-    api_dict = _to_api_dict(resp)
-
-    events: list[dict[str, Any]] = []
-    call_parts: list[dict[str, Any]] = []
-    for prov in resp.data_result.provenance:
-        call_parts.append(
-            {
-                "functionCall": {
-                    "name": prov.tool_name,
-                    "args": prov.parameters,
-                }
-            }
-        )
-    if call_parts:
-        events.append({"author": req.appName, "content": {"role": "model", "parts": call_parts}})
-
-    events.append(
-        {
-            "author": req.appName,
-            "content": {
-                "role": "user",
-                "parts": [
-                    {
-                        "functionResponse": {
-                            "name": "assemble_placement_recommendation",
-                            "response": api_dict,
-                        }
-                    }
-                ],
+def build_tract_layer(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Toolbox `tract_layer` rows -> GeoJSON FeatureCollection (heat-ui TractLayer)."""
+    features = []
+    for r in rows:
+        geom = r.get("geometry_json")
+        if isinstance(geom, str):
+            geom = json.loads(geom)
+        if not geom:
+            continue
+        pop = r.get("population")
+        features.append({
+            "type": "Feature",
+            "geometry": geom,
+            "properties": {
+                "geo_id": str(r["geo_id"]),
+                "predicted_offset_f": r.get("predicted_offset_f"),
+                "no_vehicle_rate": r.get("no_vehicle_rate"),
+                "share_65_plus": r.get("share_65_plus"),
+                "poverty_rate": r.get("poverty_rate"),
+                "population": int(pop) if pop is not None else None,
             },
-        }
-    )
-    events.append(
-        {
-            "author": req.appName,
-            "content": {
-                "role": "model",
-                "parts": [{"text": api_dict.get("narrative") or resp.narrative_markdown}],
-            },
-        }
-    )
-    return events
+        })
+    return {"type": "FeatureCollection", "features": features, "model_version": _settings.bqml_model_id}
 
+
+@app.get("/api/v1/tracts")
+def tracts_endpoint() -> dict[str, Any]:
+    """Every Atlanta tract for the heat-ui choropleth and audit scatter, via MCP Toolbox `tract_layer`.
+
+    Cached for an hour: it only changes when grid_predictions is re-scored.
+    """
+    global _tract_cache
+    if _tract_cache and time.time() - _tract_cache[0] < TRACT_LAYER_TTL_S:
+        return _tract_cache[1]
+    rows, _ = invoke_mcp_tool("tract_layer", tool_name="tract_layer", simplify_m=TRACT_SIMPLIFY_M)
+    layer = build_tract_layer(rows)
+    if not layer["features"]:
+        raise HTTPException(503, "tract_layer returned no tracts")
+    _tract_cache = (time.time(), layer)
+    return layer
