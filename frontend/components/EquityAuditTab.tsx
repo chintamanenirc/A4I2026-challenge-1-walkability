@@ -5,37 +5,70 @@ import { SiteData, CityBaseline, TractScatterPoint } from "./types";
 
 interface EquityAuditTabProps {
   sites: SiteData[];
+  centersToFund?: number;
   cityBaseline: CityBaseline;
   tractsScatter?: TractScatterPoint[];
   onNavigateTab: (tab: "ask" | "sites" | "equity" | "proposal") => void;
 }
 
-const FALLBACK_SCATTER_DOTS = [
+interface PlotDot {
+  x: number;
+  y: number;
+  geoid: string;
+  offsetF: number;
+  noCarPct: number;
+  age65Pct: number;
+}
+
+const FALLBACK_SCATTER_DOTS: PlotDot[] = [
   // Top-left (Vulnerable, cooler)
-  { x: 65, y: 42 }, { x: 112, y: 48 }, { x: 64, y: 58 }, { x: 118, y: 74 },
-  { x: 162, y: 80 }, { x: 66, y: 98 }, { x: 108, y: 122 }, { x: 168, y: 132 },
+  { x: 65, y: 42, geoid: "13121007602", offsetF: -1.1, noCarPct: 24.2, age65Pct: 16.5 },
+  { x: 112, y: 48, geoid: "13121008201", offsetF: -0.4, noCarPct: 22.8, age65Pct: 15.8 },
+  { x: 64, y: 58, geoid: "13121007806", offsetF: -1.2, noCarPct: 21.0, age65Pct: 15.1 },
+  { x: 118, y: 74, geoid: "13121008301", offsetF: -0.2, noCarPct: 19.4, age65Pct: 14.2 },
+  { x: 162, y: 80, geoid: "13121006300", offsetF: 0.6, noCarPct: 18.6, age65Pct: 14.0 },
+  { x: 66, y: 98, geoid: "13121007705", offsetF: -1.1, noCarPct: 16.2, age65Pct: 13.8 },
+  { x: 108, y: 122, geoid: "13121008500", offsetF: -0.5, noCarPct: 14.5, age65Pct: 13.0 },
+  { x: 168, y: 132, geoid: "13121005501", offsetF: 0.7, noCarPct: 13.8, age65Pct: 12.6 },
   // Top-right (Hot + vulnerable)
-  { x: 250, y: 104 }, { x: 280, y: 116 }, { x: 300, y: 82 }, { x: 325, y: 66 },
-  { x: 332, y: 95 },
+  { x: 250, y: 104, geoid: "13121004400", offsetF: 2.3, noCarPct: 21.5, age65Pct: 14.8 },
+  { x: 280, y: 116, geoid: "13121005700", offsetF: 2.8, noCarPct: 19.2, age65Pct: 14.1 },
+  { x: 300, y: 82, geoid: "13121006701", offsetF: 3.2, noCarPct: 23.4, age65Pct: 15.2 },
+  { x: 325, y: 66, geoid: "13121004800", offsetF: 3.7, noCarPct: 26.1, age65Pct: 16.0 },
+  { x: 332, y: 95, geoid: "13121003800", offsetF: 3.9, noCarPct: 22.0, age65Pct: 14.9 },
   // Bottom-left (Cooler, lower need)
-  { x: 54, y: 170 }, { x: 40, y: 185 }, { x: 96, y: 162 }, { x: 120, y: 192 },
-  { x: 132, y: 192 }, { x: 174, y: 158 }, { x: 166, y: 214 }, { x: 174, y: 214 },
-  { x: 182, y: 214 }, { x: 92, y: 254 },
+  { x: 54, y: 170, geoid: "13121009501", offsetF: -1.4, noCarPct: 4.2, age65Pct: 11.4 },
+  { x: 40, y: 185, geoid: "13121009802", offsetF: -1.7, noCarPct: 3.1, age65Pct: 10.8 },
+  { x: 96, y: 162, geoid: "13121009101", offsetF: -0.6, noCarPct: 6.4, age65Pct: 11.9 },
+  { x: 120, y: 192, geoid: "13121009200", offsetF: -0.1, noCarPct: 5.2, age65Pct: 10.2 },
+  { x: 132, y: 192, geoid: "13121000400", offsetF: 0.1, noCarPct: 5.5, age65Pct: 9.8 },
+  { x: 174, y: 158, geoid: "13121000500", offsetF: 0.8, noCarPct: 8.1, age65Pct: 11.5 },
+  { x: 166, y: 214, geoid: "13121000600", offsetF: 0.6, noCarPct: 4.8, age65Pct: 8.4 },
+  { x: 174, y: 214, geoid: "13121001001", offsetF: 0.8, noCarPct: 4.5, age65Pct: 7.9 },
+  { x: 182, y: 214, geoid: "13121001201", offsetF: 0.9, noCarPct: 4.9, age65Pct: 8.2 },
+  { x: 92, y: 254, geoid: "13121009900", offsetF: -0.7, noCarPct: 2.1, age65Pct: 9.1 },
   // Bottom-right (Hot, lower need)
-  { x: 204, y: 150 }, { x: 222, y: 176 }, { x: 222, y: 228 }, { x: 256, y: 256 },
-  { x: 278, y: 235 }, { x: 342, y: 155 }, { x: 348, y: 212 },
+  { x: 204, y: 150, geoid: "13121001400", offsetF: 1.4, noCarPct: 9.2, age65Pct: 11.2 },
+  { x: 222, y: 176, geoid: "13121001500", offsetF: 1.7, noCarPct: 7.8, age65Pct: 10.4 },
+  { x: 222, y: 228, geoid: "13121001801", offsetF: 1.7, noCarPct: 4.6, age65Pct: 8.1 },
+  { x: 256, y: 256, geoid: "13121001900", offsetF: 2.4, noCarPct: 3.4, age65Pct: 7.2 },
+  { x: 278, y: 235, geoid: "13121002100", offsetF: 2.8, noCarPct: 5.1, age65Pct: 8.5 },
+  { x: 342, y: 155, geoid: "13121003000", offsetF: 4.0, noCarPct: 9.8, age65Pct: 10.9 },
+  { x: 348, y: 212, geoid: "13121003500", offsetF: 4.1, noCarPct: 6.2, age65Pct: 8.8 },
 ];
 
 export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
   sites,
+  centersToFund = 3,
   cityBaseline,
   tractsScatter = [],
   onNavigateTab,
 }) => {
   const [highlightSites, setHighlightSites] = useState(true);
   const [showRacialAudit, setShowRacialAudit] = useState(false);
+  const [hoveredDot, setHoveredDot] = useState<PlotDot | null>(null);
 
-  const fundedSites = sites.slice(0, 3);
+  const fundedSites = sites.slice(0, centersToFund);
   const site4 = sites.find((s) => s.id === 4) || sites[3] || sites[0];
 
   const avgIncome = Math.round(
@@ -70,16 +103,26 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
     seniorsSkewNeed,
   ].filter(Boolean).length;
 
-  // Map live BigQuery tracts to SVG coordinates if available, combined with schematic layout
-  const liveDots =
+  // Map live BigQuery tracts to SVG coordinates if available, combined with fallback
+  const liveDots: PlotDot[] =
     tractsScatter.length > 0
-      ? tractsScatter.slice(0, 48).map((t) => {
-          const clampedOffset = Math.max(-2.5, Math.min(4.8, t.offset_f));
+      ? tractsScatter.slice(0, 50).map((t) => {
+          const offsetVal = Number(t.offset_f ?? t.heatOffsetF ?? 0);
+          const noCarVal = Number(t.no_car_pct ?? t.noCarPct ?? 10);
+          const age65Val = Number(t.age_65_pct ?? t.seniorsPct ?? 12);
+          const clampedOffset = Math.max(-2.5, Math.min(4.8, offsetVal));
           const x = 35 + ((clampedOffset + 2.5) / 7.3) * 330;
-          const vulnScore = t.no_car_pct * 0.65 + t.age_65_pct * 0.35;
+          const vulnScore = noCarVal * 0.65 + age65Val * 0.35;
           const clampedVuln = Math.max(2, Math.min(32, vulnScore));
           const y = 260 - ((clampedVuln - 2) / 30) * 235;
-          return { x, y, geoid: t.geo_id };
+          return {
+            x,
+            y,
+            geoid: String(t.geo_id ?? t.geoid ?? ""),
+            offsetF: offsetVal,
+            noCarPct: noCarVal,
+            age65Pct: age65Val,
+          };
         })
       : FALLBACK_SCATTER_DOTS;
 
@@ -91,13 +134,13 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
           Did our sites land where heat hurts most?
         </h2>
         <p className="text-xs sm:text-sm text-slate-400 mt-1.5 max-w-3xl leading-relaxed">
-          Being hot isn’t the same as being at risk. We check every recommendation
-          against who actually lives there. Race was never a model input; it
-          appears only as a check on the output.
+          Being hot isn’t the same as being at risk. We check every
+          recommendation against who actually lives there. Race was never a
+          model input; it appears only as a check on the output.
         </p>
       </div>
 
-      {/* Verdict Banner matching Screenshot 3 (warm dark brown/amber fill + border) */}
+      {/* Verdict Banner */}
       <div className="bg-[#221715] border border-[#f97316]/45 rounded-2xl px-6 py-5 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="flex flex-wrap items-center gap-6">
           {/* Left: [n] of 4 measures */}
@@ -113,7 +156,8 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
           {/* Middle: Verdict Headline */}
           <div>
             <div className="text-[10px] font-mono uppercase font-bold tracking-widest text-slate-400">
-              VERDICT
+              VERDICT · {fundedSites.length} FUNDED{" "}
+              {fundedSites.length === 1 ? "SITE" : "SITES"}
             </div>
             <div className="text-base sm:text-lg font-extrabold text-slate-100 mt-0.5">
               {measuresMatched >= 3
@@ -152,7 +196,7 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
         </div>
       </div>
 
-      {/* Main 2-Column Section matching Screenshot 3 */}
+      {/* Main 2-Column Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         {/* Left Column: Quadrant Scatter Plot */}
         <div className="lg:col-span-5 bg-[#0d1422] border border-slate-800/90 rounded-2xl p-6 shadow-xl flex flex-col justify-between gap-5">
@@ -165,7 +209,7 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                 <p className="text-xs text-slate-400 mt-0.5">
                   Each dot is a census tract ·{" "}
                   {tractsScatter.length > 0
-                    ? `${tractsScatter.length} Atlanta ACS tracts`
+                    ? `${tractsScatter.length} live BigQuery ACS tracts`
                     : "Atlanta ACS tracts"}
                 </p>
               </div>
@@ -182,7 +226,7 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
               </button>
             </div>
 
-            {/* Scatter Plot Viewport matching Screenshot 3 */}
+            {/* Scatter Plot Viewport */}
             <div className="relative w-full h-[340px] mt-4 select-none">
               {/* Y-Axis Label */}
               <div className="absolute -left-14 top-1/2 -translate-y-1/2 -rotate-90 text-[11px] font-medium text-slate-400 whitespace-nowrap pointer-events-none">
@@ -223,16 +267,22 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                   />
 
                   {/* Background Census Tract Dots */}
-                  {liveDots.map((dot, idx) => (
-                    <circle
-                      key={idx}
-                      cx={dot.x}
-                      cy={dot.y}
-                      r="3.5"
-                      fill="#475569"
-                      opacity="0.65"
-                    />
-                  ))}
+                  {liveDots.map((dot, idx) => {
+                    const isHovered = hoveredDot?.geoid === dot.geoid;
+                    return (
+                      <circle
+                        key={idx}
+                        cx={dot.x}
+                        cy={dot.y}
+                        r={isHovered ? "5.5" : "3.8"}
+                        fill={isHovered ? "#fdba74" : "#475569"}
+                        opacity={isHovered ? "1" : "0.7"}
+                        onMouseEnter={() => setHoveredDot(dot)}
+                        onMouseLeave={() => setHoveredDot(null)}
+                        className="cursor-pointer transition-all"
+                      />
+                    );
+                  })}
 
                   {/* Highlighted Sites 1, 2, 3 in Hot + Vulnerable and Site 4 in Hot, Lower Need */}
                   {highlightSites && (
@@ -321,6 +371,20 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                   )}
                 </svg>
 
+                {/* Hover Tooltip on Tract Dot */}
+                {hoveredDot && (
+                  <div className="absolute bottom-2.5 left-3 px-3 py-2 rounded-lg bg-[#090d16]/95 border border-[#f97316]/60 text-[11px] font-mono text-slate-200 shadow-lg pointer-events-none">
+                    <div className="font-bold text-white">
+                      Tract {hoveredDot.geoid.slice(-5)}
+                    </div>
+                    <div className="text-[#f97316]">
+                      {hoveredDot.offsetF >= 0 ? "+" : ""}
+                      {hoveredDot.offsetF.toFixed(1)}°F · {hoveredDot.noCarPct}%
+                      no car · {hoveredDot.age65Pct}% 65+
+                    </div>
+                  </div>
+                )}
+
                 {/* Quadrant Text Labels */}
                 <div className="absolute top-2.5 left-3 text-[11px] text-slate-400 font-medium">
                   Vulnerable, cooler
@@ -376,7 +440,13 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                     Median household income
                   </span>
                   <span className="text-xs text-slate-400">
-                    Lower = more need
+                    Lower = more need ·{" "}
+                    <span className="font-mono text-[#fdba74]">
+                      {Math.round(
+                        (1 - avgIncome / cityBaseline.medianIncome) * 100
+                      )}
+                      % below city avg
+                    </span>
                   </span>
                 </div>
 
@@ -385,7 +455,10 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                     <div
                       className="h-full bg-[#f97316] rounded-full"
                       style={{
-                        width: `${Math.min(100, Math.round((avgIncome / 110000) * 100))}%`,
+                        width: `${Math.min(
+                          100,
+                          Math.round((avgIncome / 110000) * 100)
+                        )}%`,
                       }}
                     />
                   </div>
@@ -401,7 +474,9 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                       style={{
                         width: `${Math.min(
                           100,
-                          Math.round((cityBaseline.medianIncome / 110000) * 100)
+                          Math.round(
+                            (cityBaseline.medianIncome / 110000) * 100
+                          )
                         )}%`,
                       }}
                     />
@@ -419,7 +494,11 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                     Poverty rate
                   </span>
                   <span className="text-xs text-slate-400">
-                    Higher = more need
+                    Higher = more need ·{" "}
+                    <span className="font-mono text-[#fdba74]">
+                      {(avgPoverty / cityBaseline.povertyRate).toFixed(1)}× city
+                      avg
+                    </span>
                   </span>
                 </div>
 
@@ -462,7 +541,10 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                     Households without a car
                   </span>
                   <span className="text-xs text-slate-400">
-                    Higher = harder to reach relief
+                    Higher = harder to reach relief ·{" "}
+                    <span className="font-mono text-[#fdba74]">
+                      {(avgNoCar / cityBaseline.noCarPct).toFixed(1)}× city avg
+                    </span>
                   </span>
                 </div>
 
@@ -505,7 +587,11 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                     Residents 65 and older
                   </span>
                   <span className="text-xs text-slate-400">
-                    Higher = more heat risk
+                    Higher = more heat risk ·{" "}
+                    <span className="font-mono text-[#fdba74]">
+                      {(avgSeniors / cityBaseline.seniorsPct).toFixed(1)}× city
+                      avg
+                    </span>
                   </span>
                 </div>
 
@@ -514,7 +600,10 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
                     <div
                       className="h-full bg-[#f97316] rounded-full"
                       style={{
-                        width: `${Math.min(100, Math.round(avgSeniors * 2.7))}%`,
+                        width: `${Math.min(
+                          100,
+                          Math.round(avgSeniors * 2.7)
+                        )}%`,
                       }}
                     />
                   </div>
@@ -595,7 +684,8 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
           {/* Bottom Card Controls */}
           <div className="flex flex-wrap items-center justify-between gap-4 pt-3">
             <span className="text-xs text-slate-400">
-              Wired to BigQuery semantic audit layer (a4i_semantic.audit_city_baseline).
+              Wired to BigQuery semantic audit layer
+              (a4i_semantic.audit_city_baseline).
             </span>
             <button
               type="button"
@@ -610,7 +700,7 @@ export const EquityAuditTab: React.FC<EquityAuditTabProps> = ({
         </div>
       </div>
 
-      {/* Bottom Action Buttons matching Screenshot 3 */}
+      {/* Bottom Action Buttons */}
       <div className="flex flex-wrap items-center gap-3.5 pt-1">
         <button
           type="button"
