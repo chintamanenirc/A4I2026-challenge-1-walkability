@@ -1,4 +1,4 @@
-# Python
+# Python & test caches
 __pycache__/
 *.py[cod]
 *.pyc
@@ -6,16 +6,52 @@ __pycache__/
 venv/
 env/
 *.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
 
 # Notebooks
 .ipynb_checkpoints/
 
-# Credentials - never commit these
+# Frontend / Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Credentials & env - never commit these
 *.json.key
 service-account*.json
 credentials.json
 .env
+.env.*
+!.env.example
 agent/**/.env
+frontend/**/.env*
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local agent / dev state & scratch docs
+.adk/
+.agy/
+.gemini/
+prompts/
+scratch/
+tmp/
+*.log
+*.local.md
+docs/local/
+NOTES.md
+TODO.md
 
 # OS & backups
 .DS_Store
