@@ -327,12 +327,12 @@ export async function POST(req: NextRequest) {
     const queryAgent = async (remoteCloudUrl: string, appName: string) => {
       const startTime = Date.now();
       let agentRes: Response | null = null;
-      const preferLocal = process.env.PREFER_LOCAL_ADK === "true";
+      const preferLocal = process.env.PREFER_LOCAL_ADK !== "false";
       const primaryUrl = preferLocal ? LOCAL_ADK_URL : remoteCloudUrl;
       const secondaryUrl = preferLocal ? remoteCloudUrl : LOCAL_ADK_URL;
       let usedUrl = primaryUrl;
 
-      // Default to calling the Cloud Run agent first; fall back to local ADK only if unreachable
+      // Call the local repo ADK agent first when running locally; fall back to Cloud Run if unreachable
       try {
         agentRes = await executeAgainstAdk(primaryUrl, appName);
         if (!agentRes.ok && secondaryUrl !== primaryUrl) {
