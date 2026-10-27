@@ -17,14 +17,14 @@ Source of truth for the challenge is the cloned challenge repo `README.md` and
 
 | Decision | Value |
 |---|---|
-| City | Atlanta, GA |
-| Track | This budget cycle |
-| Scenario (one sentence) | "We're the City of Atlanta: fund 3 permanent walkable cooling centers, council vote in 3 weeks" |
+| City | `Atlanta, GA` |
+| Track | `This budget cycle` (3 permanent cooling centers, council in 3 weeks) |
+| Scenario (one sentence) | `"We're the City of Atlanta, July, 3 permanent cooling centers, council in 3 weeks"` |
 | GCP project | `qwiklabs-gcp-04-ec3596addc43` |
-| Region (compute) | `us-central1` (Gemini 3 calls use `global`) |
+| Region (compute) | `us-central1` |
 | BigQuery location | `US` (multi-region, matches `scripts/load.sh`) |
-| Front end | Custom (`ui_service/`, heat-ui): a planner needs the map, the sites, the equity audit and a council memo side by side with the chat, which a chat-only surface can't show |
-| Deploy target | Cloud Run: `heat-toolbox`, `heat-planner-api`, `heat-ui` |
+| Front end | `heat-ui custom front end`: interactive municipal scenario comparisons, heat-offset choropleth map, and council equity scorecard |
+| Deploy target | `Cloud Run` |
 
 ## Non-negotiables (judges check these; break none of them)
 

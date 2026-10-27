@@ -642,7 +642,8 @@ function renderAudit() {
   host.replaceChildren(
     el("div", { class: `verdict${s.measures_toward_need * 2 > s.measures_total ? "" : " note"}` },
       el("div", { class: "score" }, el("span", { class: "n", text: String(s.measures_toward_need) }), el("span", { text: `of ${s.measures_total} measures` })),
-      el("div", { class: "vtext" }, el("small", { text: "VERDICT" }), el("strong", { text: s.verdict })),
+      el("div", { class: "vtext" }, el("small", { text: "VERDICT" }), el("strong", { text: s.verdict }),
+        s.detail ? el("p", { class: "vdetail", text: s.detail }) : null),
       el("div", { class: "vchips" }, v.audit_table.map((r) => el("span", { class: r.toward_need ? "good" : "", text: `${short[r.measure]} · ${arrow(r)}` })))),
     el("div", { class: "audit-grid" },
       el("div", { class: "card" },

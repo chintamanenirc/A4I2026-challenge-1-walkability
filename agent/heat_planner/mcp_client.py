@@ -28,6 +28,7 @@ MCP_TOOL_SQL_OBJECTS: dict[str, str] = {
     "hottest_measured_cells": "a4i_semantic.heat_cells",
     "hottest_predicted_cells": "a4i_ml.grid_predictions + a4i_semantic.tract_features",
     "city_baseline": "a4i_semantic.tract_features + a4i_semantic.station_daily_city + a4i_ml.campaign_footprint",
+    "tract_layer": "a4i_semantic.dim_tract + a4i_ml.grid_predictions + TIGER/Line tract polygons",
 }
 
 
