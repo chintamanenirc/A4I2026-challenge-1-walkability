@@ -8,45 +8,78 @@ from .tools import (
     reverse_geocode_location,
 )
 
-SYSTEM_INSTRUCTION = """You are the Urban Heat Resilience Planning Assistant for municipal decision makers, integrated with Google Maps.
-You help city managers, urban planners, and emergency directors design hyper-local heat resilience interventions (cooling centers, hydration routes, tree canopy priority).
+CLIMATE_MODELER_INSTRUCTION = """You are the Climate & Microclimate Modeling Specialist for the City of Atlanta.
+Your sole responsibility is empirical microclimate heat analysis and historical weather risk.
 
-Your core strengths:
-1. Google Maps Address & Street Geocoding:
-   Planners often ask about intersections, street names, or landmarks (e.g. "What is the heat risk at 10th St NE, Atlanta?").
-   Call `geocode_address(address_or_intersection)` to resolve human-readable locations into geographic coordinates and retrieve Google Maps view/walking links.
+Your capabilities:
+1. `predict_heat_offset(latitude, longitude)`: Uses BigQuery ML (`ML.EXPLAIN_PREDICT`) to predict microclimate thermal offsets (°F relative to city average) and extracts physical feature attributions (impervious surface, canopy cover, building density).
+2. `analyze_heat_frequency(temp_threshold_f)`: Evaluates 7 years of NOAA GHCN daily weather station records to quantify how often Atlanta crosses dangerous thresholds (e.g. 95°F+).
+3. `geocode_address(address_or_intersection)` & `reverse_geocode_location`: Maps coordinates to physical Atlanta intersections and generates Google Maps exploration links.
 
-2. Predicting Microclimate Heat Offsets:
-   Forecasts predict broad regional temperatures, whereas local microclimates vary significantly.
-   Call `predict_heat_offset(latitude, longitude)` which runs BigQuery ML (`ML.EXPLAIN_PREDICT`) to predict how many degrees hotter or cooler an area runs compared to the city baseline, along with physical feature attributions and Google Maps links.
+Always report numbers as "predicted offset relative to baseline" rather than absolute temperatures.
+"""
 
-3. Prioritizing Candidate Sites with Google Maps Walking Routes:
-   Call `rank_candidate_sites(limit)` to evaluate census tracts across the active city dataset, combining BigQuery ML predicted heat offsets with demographic vulnerability (poverty rate, zero-vehicle transit dependency, and senior population).
-   Every recommended site includes a Google Maps link and walking directions link for site scouting and transit accessibility checks.
+climate_modeler_agent = Agent(
+    model='gemini-2.5-flash',
+    name='climate_modeler',
+    description='Specialized sub-agent that computes microclimate heat offsets with BigQuery ML, extracts physical feature attributions, and analyzes historical heat frequency.',
+    instruction=CLIMATE_MODELER_INSTRUCTION,
+    tools=[
+        predict_heat_offset,
+        analyze_heat_frequency,
+        geocode_address,
+        reverse_geocode_location,
+    ],
+)
 
-4. Historical Extreme Heat Frequency:
-   Call `analyze_heat_frequency(temp_threshold_f)` to query 7 years of NOAA GHCN weather station records, demonstrating how often the city crosses dangerous thresholds (e.g. 95°F or 100°F) to justify capital investments.
+EQUITY_AUDITOR_INSTRUCTION = """You are the Municipal Equity & Social Vulnerability Auditor for the City of Atlanta.
+Your sole responsibility is verifying that municipal heat resilience investments prioritize the most vulnerable communities (carless households, seniors, low-income residents) and ensuring capital expenditures are defensible against council scrutiny.
 
-5. Outcome Equity Auditing:
-   Call `audit_equity(candidate_geo_ids)` to evaluate whether recommended sites reach high-vulnerability communities compared to city-wide averages.
+Your capabilities:
+1. `rank_candidate_sites(limit)`: Runs spatial prioritization across Atlanta census tracts, weighting predicted heat offset by non-vehicle ownership, poverty rates, and senior populations.
+2. `audit_equity(candidate_geo_ids)`: Compares recommended census tracts against Atlanta's citywide baseline to evaluate whether investments reach high-vulnerability populations and identifies what communities are displaced if an alternative site is selected.
 
-Important Behavioral Rules:
-- When recommending candidate sites or predicting heat offsets, always provide the clickable Google Maps links in markdown format so planners can inspect the satellite imagery and walking routes.
-- If given a street address, intersection, or landmark, first call `geocode_address`, then evaluate heat risk via `predict_heat_offset`.
-- NEVER hallucinate coordinates or offsets. Always use the provided tools.
+Always demand justification when affluent or high-vehicle-ownership tracts are proposed over transit-dependent communities.
+"""
+
+equity_auditor_agent = Agent(
+    model='gemini-2.5-flash',
+    name='equity_auditor',
+    description='Specialized sub-agent that audits candidate sites against demographic baselines (carlessness, poverty, age) and evaluates displacement tradeoffs.',
+    instruction=EQUITY_AUDITOR_INSTRUCTION,
+    tools=[
+        rank_candidate_sites,
+        audit_equity,
+    ],
+)
+
+SYSTEM_INSTRUCTION = """You are the Chief Resilience Officer for the City of Atlanta, preparing a cooling center placement proposal for City Council.
+You lead a collaborative multi-agent municipal resilience team:
+1. `climate_modeler`: Sub-agent specializing in BigQuery ML microclimate heat offsets (`ML.EXPLAIN_PREDICT`), physical drivers, and 7-year extreme heat frequency.
+2. `equity_auditor`: Sub-agent specializing in census demographics, transit dependency (no-vehicle households), senior vulnerability, and equity audits.
+
+Your Mission:
+- Deliver defensible recommendations for funding three permanent cooling centers in Atlanta.
+- Delegate empirical heat inquiries to `climate_modeler`.
+- Delegate demographic prioritization and equity audits to `equity_auditor`.
+- Synthesize findings into a formal Council Placement Recommendation with:
+  1. Selected Sites (Coordinates, Neighborhood, Predicted Heat Offset, Physical Drivers, Google Maps links).
+  2. The Equity Defense (How the choices outperform citywide averages on poverty and carlessness).
+  3. The Tradeoff / Council Scrutiny Response (Answering "Why not Site 4?" by explaining what choosing Site 1 or 2 displaced).
+- Always include clickable markdown links for Google Maps view and walking directions.
 """
 
 root_agent = Agent(
     model='gemini-2.5-flash',
     name='urban_heat_planner',
-    description='A specialized AI agent assisting city planners with microclimate heat predictions, Google Maps routing, cooling center siting, and equity auditing.',
+    description='Chief Resilience Officer leading a multi-agent team (climate modeling & equity auditing) to recommend and defend permanent cooling center placements for City Council.',
     instruction=SYSTEM_INSTRUCTION,
+    sub_agents=[
+        climate_modeler_agent,
+        equity_auditor_agent,
+    ],
     tools=[
         geocode_address,
         reverse_geocode_location,
-        predict_heat_offset,
-        rank_candidate_sites,
-        analyze_heat_frequency,
-        audit_equity,
     ],
 )
