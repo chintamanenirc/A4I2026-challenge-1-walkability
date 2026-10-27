@@ -17,14 +17,14 @@ Source of truth for the challenge is the cloned challenge repo `README.md` and
 
 | Decision | Value |
 |---|---|
-| City | `<e.g. Dallas>` |
-| Track | `<Today / This budget cycle / This decade>` |
-| Scenario (one sentence) | `<"We're the City of Dallas, July, 4 cooling centers, council in 3 weeks">` |
-| GCP project | `<project-id>` |
+| City | `Atlanta, GA` |
+| Track | `This budget cycle` (3 permanent cooling centers, council in 3 weeks) |
+| Scenario (one sentence) | `"We're the City of Atlanta, July, 3 permanent cooling centers, council in 3 weeks"` |
+| GCP project | `qwiklabs-gcp-04-ec3596addc43` |
 | Region (compute) | `us-central1` |
 | BigQuery location | `US` (multi-region, matches `scripts/load.sh`) |
-| Front end | `<adk web / Gemini Enterprise / custom>`: plus the one-sentence *why* |
-| Deploy target | `<Agent Runtime / Cloud Run>` |
+| Front end | `heat-ui custom front end`: interactive municipal scenario comparisons, heat-offset choropleth map, and council equity scorecard |
+| Deploy target | `Cloud Run` |
 
 ## Non-negotiables (judges check these; break none of them)
 
