@@ -12,5 +12,8 @@ __pycache__/
 /atlanta_heat_agent/
 *.parquet
 *.csv.gz
+*.pdf
+*.pptx
+/docs/
 .env
 
