@@ -163,18 +163,38 @@ class SvgMap {
   }
   project(lon, lat) { return [(lon - this.minLon) * this.kx * 1000, (this.maxLat - lat) * 1000]; }
   setTracts(fc, onClick) {
-    const all = [];
-    fc.features.forEach((f) => (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates)
-      .forEach((p) => p.forEach((ring) => ring.forEach((pt) => all.push(pt)))));
-    this.minLon = Math.min(...all.map((p) => p[0])); const maxLon = Math.max(...all.map((p) => p[0]));
-    this.minLat = Math.min(...all.map((p) => p[1])); this.maxLat = Math.max(...all.map((p) => p[1]));
+    const polysOf = (g) => {
+      if (!g) return [];
+      if (g.type === "Polygon") return [g.coordinates];
+      if (g.type === "MultiPolygon") return g.coordinates;
+      if (g.type === "GeometryCollection") return (g.geometries || []).flatMap(polysOf);
+      return [];
+    };
+    const all = [], focus = [];
+    fc.features.forEach((f) => {
+      const hasOffset = typeof f.properties?.predicted_offset_f === "number";
+      polysOf(f.geometry).forEach((p) => p.forEach((ring) => ring.forEach((pt) => {
+        all.push(pt);
+        if (hasOffset) focus.push(pt);
+      })));
+    });
+    const bboxPts = focus.length ? focus : all;
+    let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    for (const [lon, lat] of bboxPts) {
+      if (lon < minLon) minLon = lon;
+      if (lon > maxLon) maxLon = lon;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+    }
+    this.minLon = minLon;
+    this.minLat = minLat; this.maxLat = maxLat;
     this.kx = Math.cos(((this.minLat + this.maxLat) / 2) * Math.PI / 180);
     this.w = (maxLon - this.minLon) * this.kx * 1000; this.h = (this.maxLat - this.minLat) * 1000;
     this.unit = this.h;
     this.applyZoom();
     this.svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     this.paths = fc.features.map((f) => {
-      const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+      const polys = polysOf(f.geometry);
       const d = polys.map((p) => p.map((ring) => "M" + ring.map(([lon, lat]) => this.project(lon, lat).map((n) => n.toFixed(2)).join(",")).join("L") + "Z").join("")).join("");
       const path = sv("path", { d, class: "tract", "fill-rule": "evenodd", onclick: () => onClick(f) });
       return { f, path };

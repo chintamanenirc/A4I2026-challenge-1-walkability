@@ -306,6 +306,30 @@ def plan_endpoint(req: PlanRequest) -> dict[str, Any]:
     return _to_api_dict(resp)
 
 
+def _normalize_polygon_geom(geom: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not geom or not isinstance(geom, dict):
+        return None
+    gtype = geom.get("type")
+    if gtype in ("Polygon", "MultiPolygon"):
+        return geom
+    if gtype == "GeometryCollection":
+        polys: list[Any] = []
+        for sub in geom.get("geometries") or []:
+            norm = _normalize_polygon_geom(sub)
+            if not norm:
+                continue
+            if norm["type"] == "Polygon":
+                polys.append(norm["coordinates"])
+            elif norm["type"] == "MultiPolygon":
+                polys.extend(norm["coordinates"])
+        if not polys:
+            return None
+        if len(polys) == 1:
+            return {"type": "Polygon", "coordinates": polys[0]}
+        return {"type": "MultiPolygon", "coordinates": polys}
+    return None
+
+
 def build_tract_layer(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Toolbox `tract_layer` rows -> GeoJSON FeatureCollection (heat-ui TractLayer)."""
     features = []
@@ -313,6 +337,7 @@ def build_tract_layer(rows: list[dict[str, Any]]) -> dict[str, Any]:
         geom = r.get("geometry_json")
         if isinstance(geom, str):
             geom = json.loads(geom)
+        geom = _normalize_polygon_geom(geom)
         if not geom:
             continue
         pop = r.get("population")
